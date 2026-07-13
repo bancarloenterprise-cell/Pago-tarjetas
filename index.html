@@ -71,7 +71,7 @@
         .value { font-weight: bold; color: #ffffff; }
         .debt-highlight { font-size: 20px; color: #ef4444; font-weight: 800; }
         
-        /* Tabla de Fechas de Corte y Pago */
+        /* Tabla de Fechas Dinámicas */
         .dates-table {
             width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px;
             background-color: #050505; border: 1px solid #222222; border-radius: 8px; overflow: hidden;
@@ -168,28 +168,28 @@
                 <span class="value" id="val-debito" style="color: #10b981;">$0.00</span>
             </div>
             
-            <!-- TABLA DE DIAS DE CORTE Y PAGO MAXIMO -->
+            <!-- TABLA DE CONTROL DE DIAS DINÁMICOS -->
             <div style="margin-top: 15px;">
-                <span class="label" style="font-size: 13px; font-weight: 600;">Control de Periodo Actual:</span>
+                <span class="label" style="font-size: 13px; font-weight: 600;">Ciclo de Crédito Activo:</span>
                 <table class="dates-table">
                     <thead>
                         <tr>
                             <th>Concepto</th>
-                            <th>Fecha</th>
+                            <th>Fecha / Plazo</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Fecha de Corte</td>
-                            <td id="table-corte">--/--/----</td>
+                            <td>Fecha de Corte (21 días del gasto)</td>
+                            <td id="table-corte">Sin uso de crédito</td>
                         </tr>
                         <tr>
-                            <td>Fecha Límite de Pago (15 días)</td>
+                            <td>Fecha Límite (Corte + 10 días)</td>
                             <td id="table-pago" style="color: #f59e0b; font-weight: bold;">--/--/----</td>
                         </tr>
                         <tr>
-                            <td>Estatus de Plazo</td>
-                            <td id="table-status">Calculando...</td>
+                            <td>Estatus del Periodo</td>
+                            <td id="table-status">Esperando consumos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -211,7 +211,7 @@
         <!-- PANEL DE SIMULACIÓN -->
         <div class="control-panel-box" id="simulador-panel">
             <div>
-                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Simulación Fin de Mes (12% Int.)</div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Simulación Ciclo Acelerado</div>
                 <div style="font-size: 12px; color: #64748b;" id="txt-simulador">Desactivado</div>
             </div>
             <label class="switch">
@@ -223,7 +223,7 @@
         <!-- PAGO AUTOMÁTICO -->
         <div class="control-panel-box" id="auto-pay-panel">
             <div>
-                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático Mensual</div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático al Vencimiento</div>
                 <div style="font-size: 12px; color: #64748b;" id="txt-auto-pay">Desactivado</div>
             </div>
             <label class="switch">
@@ -275,28 +275,46 @@
             return email.toLowerCase().replace(/\./g, '_');
         }
 
-        // Función para calcular y renderizar las fechas límite en la tabla
+        // Nueva lógica de cálculo: Inicia al detectar cualquier gasto del saldo crediticio
         function calcularFechasDeCorteYPago() {
+            const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            const statusCelda = document.getElementById('table-status');
+            const corteCelda = document.getElementById('table-corte');
+            const pagoCelda = document.getElementById('table-pago');
+
+            if (deudaDeConsumo <= 0) {
+                corteCelda.innerText = "Sin uso de crédito";
+                pagoCelda.innerText = "--/--/----";
+                statusCelda.innerText = "Tarjeta en ceros";
+                statusCelda.style.color = "#94a3b8";
+                return;
+            }
+
+            // Si hay gasto, simulamos que el gasto inicial ocurrió hoy para proyectar las fechas futuras
             const hoy = new Date();
             
-            // Asumimos el día de hoy como fecha de corte simulada del ciclo activo
+            // 21 días desde el inicio para la Fecha de Corte
             const fechaCorte = new Date(hoy);
-            
-            // Fecha límite de pago: 15 días exactos después de la fecha de corte
-            const fechaLimitePago = new Date(hoy);
-            fechaLimitePago.setDate(fechaCorte.getDate() + 15);
+            fechaCorte.setDate(hoy.getDate() + 21);
 
-            const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-            document.getElementById('table-corte').innerText = fechaCorte.toLocaleDateString('es-MX', opciones);
-            document.getElementById('table-pago').innerText = fechaLimitePago.toLocaleDateString('es-MX', opciones);
-            
-            const tiempoRestante = fechaLimitePago - hoy;
-            const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
+            // 10 días desde la fecha de corte para la Fecha de Pago Máximo
+            const fechaLimitePago = new Date(fechaCorte);
+            fechaLimitePago.setDate(fechaCorte.getDate() + 10);
 
-            const statusCelda = document.getElementById('table-status');
-            if (diasRestantes >= 0) {
-                statusCelda.innerText = `Tienes ${diasRestantes} días para pagar`;
-                statusCelda.style.color = "#10b981";
+            corteCelda.innerText = fechaCorte.toLocaleDateString('es-MX', opciones);
+            pagoCelda.innerText = fechaLimitePago.toLocaleDateString('es-MX', opciones);
+            
+            const tiempoHastaPago = fechaLimitePago - hoy;
+            const diasTotalesRestantes = Math.ceil(tiempoHastaPago / (1000 * 60 * 60 * 24));
+
+            if (diasTotalesRestantes > 10) {
+                // Periodo regular antes del corte
+                statusCelda.innerText = `Faltan ${diasTotalesRestantes - 10} días para el corte`;
+                statusCelda.style.color = "#3b82f6";
+            } else if (diasTotalesRestantes >= 0) {
+                // Periodo de gracia posterior al corte
+                statusCelda.innerText = `¡Periodo de pago! Quedan ${diasTotalesRestantes} días límite`;
+                statusCelda.style.color = "#f59e0b";
             } else {
                 statusCelda.innerText = "Plazo Vencido";
                 statusCelda.style.color = "#ef4444";
@@ -333,7 +351,6 @@
                     document.getElementById('val-interes').innerText = '$' + interesesAcumulados.toLocaleString('es-MX', {minimumFractionDigits: 2});
                     document.getElementById('val-deuda').innerText = '$' + deudaTotalExigible.toLocaleString('es-MX', {minimumFractionDigits: 2});
                     
-                    // Actualizar métricas de tiempo en la tabla
                     calcularFechasDeCorteYPago();
 
                     document.getElementById('finance-panel').style.display = "block";
@@ -345,7 +362,7 @@
                     mostrarMensaje("✨ Creando nueva cuenta en Bancarlo Cloud...", "success");
                     database.ref('users/' + myCleanKey).set({
                         debito: 3000.00,
-                        credito: 1400.00,
+                        credito: 1999.00, // Creamos un saldo inicial con $1 de gasto para iniciar el flujo
                         intereses_acumulados: 0.00
                     });
                 }
@@ -357,7 +374,7 @@
             const txtSim = document.getElementById('txt-simulador');
 
             if (interruptor) {
-                txtSim.innerText = "Activo (Corte de mes cada 30s)";
+                txtSim.innerText = "Activo (Ciclo total acelerado a 30s)";
                 txtSim.style.color = "#ef4444";
                 
                 temporizadorMes = setInterval(() => {
@@ -368,7 +385,7 @@
                         database.ref('users/' + myCleanKey).update({
                             intereses_acumulados: parseFloat(nuevosIntereses.toFixed(2))
                         });
-                        mostrarMensaje(`⚠️ ¡Fin de plazo de 15 días tras el corte! Se sumó 12% de interés ($${recargoInteres.toFixed(2)}).`, "error");
+                        mostrarMensaje(`⚠️ ¡Límite vencido (21d corte + 10d pago)! Se sumó 12% de interés ($${recargoInteres.toFixed(2)}).`, "error");
                     }
                 }, 30000);
             } else {
@@ -383,13 +400,13 @@
             const txtAuto = document.getElementById('txt-auto-pay');
             
             if (interruptor) {
-                txtAuto.innerText = "Activo -> Envío automático a carloitzae52@gmail.com";
+                txtAuto.innerText = "Activo -> Liquidación al pasar los 10 días del corte";
                 txtAuto.style.color = "#f59e0b";
-                mostrarMensaje("⚙️ Liquidación automática programada dentro del límite de 15 días.", "success");
+                mostrarMensaje("⚙️ Liquidación con débito configurada automáticamente tras los plazos correspondientes.", "success");
                 
                 temporizadorPagoAuto = setInterval(() => {
                     if (deudaTotalExigible > 0) {
-                        console.log("[Auto-Pay] Ejecutando pago máximo con tarjeta de débito por fecha límite...");
+                        console.log("[Auto-Pay] Ejecutando transferencia de débito para liquidar deuda dentro de los 10 días.");
                         ejecutarPagoUnico();
                     }
                 }, 35000);
@@ -397,7 +414,7 @@
                 if (temporizadorPagoAuto) clearInterval(temporizadorPagoAuto);
                 txtAuto.innerText = "Desactivado";
                 txtAuto.style.color = "#64748b";
-                mostrarMensaje("🛑 Pago automático mensual cancelado.", "error");
+                mostrarMensaje("🛑 Pago automático cancelado.", "error");
             }
         }
 
