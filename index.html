@@ -71,7 +71,7 @@
         .value { font-weight: bold; color: #ffffff; }
         .debt-highlight { font-size: 20px; color: #ef4444; font-weight: 800; }
         
-        /* Tabla de Fechas Dinámicas */
+        /* Tabla de Fechas del Ciclo */
         .dates-table {
             width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px;
             background-color: #050505; border: 1px solid #222222; border-radius: 8px; overflow: hidden;
@@ -168,23 +168,23 @@
                 <span class="value" id="val-debito" style="color: #10b981;">$0.00</span>
             </div>
             
-            <!-- TABLA DE CONTROL DE DIAS DINÁMICOS -->
+            <!-- TABLA DE CONTROL DE PLAZOS Y FECHAS -->
             <div style="margin-top: 15px;">
                 <span class="label" style="font-size: 13px; font-weight: 600;">Ciclo de Crédito Activo:</span>
                 <table class="dates-table">
                     <thead>
                         <tr>
                             <th>Concepto</th>
-                            <th>Fecha / Plazo</th>
+                            <th>Fecha / Plazo Máximo</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Fecha de Corte (21 días del gasto)</td>
+                            <td>Fecha de Corte (Gasto + 21 días)</td>
                             <td id="table-corte">Sin uso de crédito</td>
                         </tr>
                         <tr>
-                            <td>Fecha Límite (Corte + 10 días)</td>
+                            <td>Fecha Máxima de Pago (+10 días)</td>
                             <td id="table-pago" style="color: #f59e0b; font-weight: bold;">--/--/----</td>
                         </tr>
                         <tr>
@@ -223,7 +223,7 @@
         <!-- PAGO AUTOMÁTICO -->
         <div class="control-panel-box" id="auto-pay-panel">
             <div>
-                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático al Vencimiento</div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático Máximo</div>
                 <div style="font-size: 12px; color: #64748b;" id="txt-auto-pay">Desactivado</div>
             </div>
             <label class="switch">
@@ -275,7 +275,7 @@
             return email.toLowerCase().replace(/\./g, '_');
         }
 
-        // Nueva lógica de cálculo: Inicia al detectar cualquier gasto del saldo crediticio
+        // Nueva Lógica Dinámica: Inicia cuenta si se gasta un peso o lo que sea de crédito
         function calcularFechasDeCorteYPago() {
             const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
             const statusCelda = document.getElementById('table-status');
@@ -290,14 +290,14 @@
                 return;
             }
 
-            // Si hay gasto, simulamos que el gasto inicial ocurrió hoy para proyectar las fechas futuras
+            // Si hay deuda activa, simulamos el transcurso de las fechas desde el consumo inicial
             const hoy = new Date();
             
-            // 21 días desde el inicio para la Fecha de Corte
+            // Pasan 21 días hasta iniciar la fecha de corte
             const fechaCorte = new Date(hoy);
             fechaCorte.setDate(hoy.getDate() + 21);
 
-            // 10 días desde la fecha de corte para la Fecha de Pago Máximo
+            // Tienes 10 días desde la fecha de corte hasta la fecha de pago máximo
             const fechaLimitePago = new Date(fechaCorte);
             fechaLimitePago.setDate(fechaCorte.getDate() + 10);
 
@@ -308,12 +308,10 @@
             const diasTotalesRestantes = Math.ceil(tiempoHastaPago / (1000 * 60 * 60 * 24));
 
             if (diasTotalesRestantes > 10) {
-                // Periodo regular antes del corte
-                statusCelda.innerText = `Faltan ${diasTotalesRestantes - 10} días para el corte`;
+                statusCelda.innerText = `En curso (Corte en ${diasTotalesRestantes - 10} días)`;
                 statusCelda.style.color = "#3b82f6";
             } else if (diasTotalesRestantes >= 0) {
-                // Periodo de gracia posterior al corte
-                statusCelda.innerText = `¡Periodo de pago! Quedan ${diasTotalesRestantes} días límite`;
+                statusCelda.innerText = `Periodo de pago: ${diasTotalesRestantes} días restantes`;
                 statusCelda.style.color = "#f59e0b";
             } else {
                 statusCelda.innerText = "Plazo Vencido";
@@ -362,7 +360,7 @@
                     mostrarMensaje("✨ Creando nueva cuenta en Bancarlo Cloud...", "success");
                     database.ref('users/' + myCleanKey).set({
                         debito: 3000.00,
-                        credito: 1999.00, // Creamos un saldo inicial con $1 de gasto para iniciar el flujo
+                        credito: 1999.00, // Creado con un consumo de $1 peso para activar la tabla e iniciar ciclos
                         intereses_acumulados: 0.00
                     });
                 }
@@ -385,7 +383,7 @@
                         database.ref('users/' + myCleanKey).update({
                             intereses_acumulados: parseFloat(nuevosIntereses.toFixed(2))
                         });
-                        mostrarMensaje(`⚠️ ¡Límite vencido (21d corte + 10d pago)! Se sumó 12% de interés ($${recargoInteres.toFixed(2)}).`, "error");
+                        mostrarMensaje(`⚠️ ¡Plazo máximo vencido (21d + 10d)! Se aplicó 12% de interés ($${recargoInteres.toFixed(2)}).`, "error");
                     }
                 }, 30000);
             } else {
@@ -400,13 +398,13 @@
             const txtAuto = document.getElementById('txt-auto-pay');
             
             if (interruptor) {
-                txtAuto.innerText = "Activo -> Liquidación al pasar los 10 días del corte";
+                txtAuto.innerText = "Activo -> Cobro de débito al expirar los 10 días";
                 txtAuto.style.color = "#f59e0b";
-                mostrarMensaje("⚙️ Liquidación con débito configurada automáticamente tras los plazos correspondientes.", "success");
+                mostrarMensaje("⚙️ Automatización programada: Pago máximo configurado tras los plazos del ciclo.", "success");
                 
                 temporizadorPagoAuto = setInterval(() => {
                     if (deudaTotalExigible > 0) {
-                        console.log("[Auto-Pay] Ejecutando transferencia de débito para liquidar deuda dentro de los 10 días.");
+                        console.log("[Auto-Pay] Liquidando deuda máxima utilizando la tarjeta de débito asignada.");
                         ejecutarPagoUnico();
                     }
                 }, 35000);
