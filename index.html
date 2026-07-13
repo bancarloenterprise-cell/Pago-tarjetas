@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bancarlo Cloud - Control de Crédito y Dispersión</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { 
+            font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background-color: #000000; 
+            margin: 0; 
+            padding: 20px;
+            color: #f1f5f9;
+        }
+        .payment-container {
+            max-width: 420px;
+            margin: 30px auto;
+            background: #111111;
+            border-radius: 16px;
+            border: 2px solid #e2cb99;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #e2cb99;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 1px solid #222222;
+            padding-bottom: 12px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        .form-input { 
+            width: 100%; padding: 14px; border: 1px solid #333333; border-radius: 10px; 
+            font-size: 15px; box-sizing: border-box; background-color: #050505; color: white; 
+        }
+        .form-input:focus { border-color: #10b981; outline: none; }
+        
+        .btn-connect {
+            width: 100%; background-color: #3b82f6; color: white; border: none;
+            padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700;
+            cursor: pointer; margin-bottom: 20px; text-transform: uppercase;
+        }
+        .btn-connect:hover { background-color: #2563eb; }
+
+        .data-box {
+            background: #090909; border: 1px solid #222222; border-radius: 12px;
+            padding: 15px; margin-bottom: 20px; display: none;
+        }
+        .data-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px; font-size: 14px;
+        }
+        .data-row:last-child { margin-bottom: 0; }
+        .label { color: #94a3b8; }
+        .value { font-weight: bold; color: #ffffff; }
+        .debt-highlight { font-size: 20px; color: #ef4444; font-weight: 800; }
+        
+        /* Tabla de Fechas de Corte y Pago */
+        .dates-table {
+            width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px;
+            background-color: #050505; border: 1px solid #222222; border-radius: 8px; overflow: hidden;
+        }
+        .dates-table th, .dates-table td {
+            padding: 10px; text-align: left; font-size: 12px; border-bottom: 1px solid #222222;
+        }
+        .dates-table th { background-color: #1a1a1a; color: #e2cb99; font-weight: 700; }
+        .dates-table td { color: #ffffff; }
+
+        .btn-pay {
+            width: 100%; background-color: #10b981; color: #000000; border: none;
+            padding: 15px; border-radius: 10px; font-size: 15px; font-weight: 800;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+            margin-top: 15px; display: none; transition: background 0.2s;
+        }
+        .btn-pay:hover { background-color: #059669; }
+
+        .btn-history {
+            width: 100%; background-color: #475569; color: white; border: none;
+            padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 700;
+            cursor: pointer; text-transform: uppercase; margin-top: 12px; display: none;
+        }
+        .btn-history:hover { background-color: #334155; }
+        
+        .control-panel-box {
+            background: #090909; border: 1px solid #222222; border-radius: 12px;
+            padding: 15px; margin-top: 15px; display: none; justify-content: space-between; align-items: center;
+        }
+        
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; min-width: 44px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #2e384d; transition: .3s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .slider-auto {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #2e384d; transition: .3s; border-radius: 34px;
+        }
+        .slider-auto:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider-auto { background-color: #f59e0b; }
+        input:checked + .slider-auto:before { transform: translateX(20px); }
+
+        .status-msg {
+            margin-top: 15px; padding: 12px; border-radius: 10px;
+            font-size: 13px; font-weight: 600; text-align: center; display: none;
+        }
+        .success { background-color: #10b981; color: #000000; }
+        .error { background-color: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            background-color: #111111; margin: 15% auto; padding: 20px;
+            border: 1px solid #e2cb99; width: 85%; max-width: 400px; border-radius: 12px;
+        }
+        .modal-title { font-size: 16px; font-weight: 800; color: #e2cb99; margin-bottom: 15px; text-transform: uppercase; text-align: center;}
+        .history-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; font-size: 13px; }
+        .history-item { border-bottom: 1px solid #222222; padding: 8px 0; display: flex; justify-content: space-between; }
+        .close-btn { background: #ef4444; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 5px;}
+    </style>
+</head>
+<body>
+
+    <div class="payment-container">
+        <div class="title">Amortización y Dispersión Cloud</div>
+        
+        <div class="form-group">
+            <label for="user-email">Introduce tu Correo Electrónico:</label>
+            <input type="email" id="user-email" class="form-input" placeholder="tu_correo@gmail.com">
+        </div>
+        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar Cuenta Bancaria</button>
+
+        <div class="data-box" id="finance-panel">
+            <div class="data-row">
+                <span class="label">Crédito Disponible:</span>
+                <span class="value" id="val-credito">$0.00</span>
+            </div>
+            <div class="data-row">
+                <span class="label">Saldo en Débito:</span>
+                <span class="value" id="val-debito" style="color: #10b981;">$0.00</span>
+            </div>
+            
+            <!-- TABLA DE DIAS DE CORTE Y PAGO MAXIMO -->
+            <div style="margin-top: 15px;">
+                <span class="label" style="font-size: 13px; font-weight: 600;">Control de Periodo Actual:</span>
+                <table class="dates-table">
+                    <thead>
+                        <tr>
+                            <th>Concepto</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Fecha de Corte</td>
+                            <td id="table-corte">--/--/----</td>
+                        </tr>
+                        <tr>
+                            <td>Fecha Límite de Pago (15 días)</td>
+                            <td id="table-pago" style="color: #f59e0b; font-weight: bold;">--/--/----</td>
+                        </tr>
+                        <tr>
+                            <td>Estatus de Plazo</td>
+                            <td id="table-status">Calculando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="data-row">
+                <span class="label">Intereses Acumulados (12%):</span>
+                <span class="value" id="val-interes" style="color: #f59e0b;">$0.00</span>
+            </div>
+            <div class="data-row" style="margin-top: 20px; border-top: 1px dashed #222222; padding-top: 15px;">
+                <span class="label" style="font-weight: bold;">Deuda Total Exigible:</span>
+                <span class="debt-highlight" id="val-deuda">$0.00</span>
+            </div>
+        </div>
+
+        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoUnico()">Pagar con Tarjeta de Débito</button>
+        <button class="btn-history" id="history-btn" onclick="abrirHistorial()">Ver Historial de Deudas Pasadas</button>
+
+        <!-- PANEL DE SIMULACIÓN -->
+        <div class="control-panel-box" id="simulador-panel">
+            <div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Simulación Fin de Mes (12% Int.)</div>
+                <div style="font-size: 12px; color: #64748b;" id="txt-simulador">Desactivado</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggle-simulador" onchange="conmutarSimuladorMes()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <!-- PAGO AUTOMÁTICO -->
+        <div class="control-panel-box" id="auto-pay-panel">
+            <div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático Mensual</div>
+                <div style="font-size: 12px; color: #64748b;" id="txt-auto-pay">Desactivado</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggle-auto-pay" onchange="conmutarPagoMensualPanel()">
+                <span class="slider-auto"></span>
+            </label>
+        </div>
+
+        <div id="status-box" class="status-msg"></div>
+    </div>
+
+    <!-- MODAL DE HISTORIAL -->
+    <div id="modal-historial" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Historial de Cargos Pendientes</div>
+            <div class="history-list" id="lista-cargos">
+                <!-- Se inyecta dinámicamente -->
+            </div>
+            <button class="btn-pay" style="display:block; margin-bottom:10px;" onclick="ejecutarPagoUnico(); cerrarHistorial();">Pagar Todo Desde Aquí</button>
+            <button class="close-btn" onclick="cerrarHistorial()">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw",
+            databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com",
+            projectId: "bancarlo-23297",
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let myCleanKey = "";
+        const destinoCorreo = "carloitzae52@gmail.com";
+        const destinoCleanKey = destinoCorreo.toLowerCase().replace(/\./g, '_');
+
+        let saldoDebito = 0.00;
+        let creditoDisponible = 2000.00;
+        let interesesAcumulados = 0.00;
+        let deudaDeConsumo = 0.00;
+        let deudaTotalExigible = 0.00;
+        
+        let currentRef = null;
+        let temporizadorMes = null;
+        let temporizadorPagoAuto = null;
+
+        function cleanEmailKey(email) {
+            return email.toLowerCase().replace(/\./g, '_');
+        }
+
+        // Función para calcular y renderizar las fechas límite en la tabla
+        function calcularFechasDeCorteYPago() {
+            const hoy = new Date();
+            
+            // Asumimos el día de hoy como fecha de corte simulada del ciclo activo
+            const fechaCorte = new Date(hoy);
+            
+            // Fecha límite de pago: 15 días exactos después de la fecha de corte
+            const fechaLimitePago = new Date(hoy);
+            fechaLimitePago.setDate(fechaCorte.getDate() + 15);
+
+            const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            document.getElementById('table-corte').innerText = fechaCorte.toLocaleDateString('es-MX', opciones);
+            document.getElementById('table-pago').innerText = fechaLimitePago.toLocaleDateString('es-MX', opciones);
+            
+            const tiempoRestante = fechaLimitePago - hoy;
+            const diasRestantes = Math.ceil(tiempoRestante / (1000 * 60 * 60 * 24));
+
+            const statusCelda = document.getElementById('table-status');
+            if (diasRestantes >= 0) {
+                statusCelda.innerText = `Tienes ${diasRestantes} días para pagar`;
+                statusCelda.style.color = "#10b981";
+            } else {
+                statusCelda.innerText = "Plazo Vencido";
+                statusCelda.style.color = "#ef4444";
+            }
+        }
+
+        function conectarCuentaNube() {
+            const emailInput = document.getElementById('user-email').value.trim();
+            if (!emailInput || !emailInput.includes('@')) {
+                mostrarMensaje("❌ Ingresa un correo válido.", "error");
+                return;
+            }
+
+            if (currentRef) currentRef.off();
+            desactivarTodo();
+
+            myCleanKey = cleanEmailKey(emailInput);
+            currentRef = database.ref('users/' + myCleanKey);
+
+            currentRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    saldoDebito = data.debito !== undefined ? parseFloat(data.debito) : 0.00;
+                    creditoDisponible = data.credito !== undefined ? parseFloat(data.credito) : 2000.00;
+                    interesesAcumulados = data.intereses_acumulados !== undefined ? parseFloat(data.intereses_acumulados) : 0.00;
+                    
+                    deudaDeConsumo = 2000.00 - creditoDisponible;
+                    if (deudaDeConsumo < 0) deudaDeConsumo = 0.00;
+
+                    deudaTotalExigible = deudaDeConsumo + interesesAcumulados;
+
+                    document.getElementById('val-debito').innerText = '$' + saldoDebito.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    document.getElementById('val-credito').innerText = '$' + creditoDisponible.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    document.getElementById('val-interes').innerText = '$' + interesesAcumulados.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    document.getElementById('val-deuda').innerText = '$' + deudaTotalExigible.toLocaleString('es-MX', {minimumFractionDigits: 2});
+                    
+                    // Actualizar métricas de tiempo en la tabla
+                    calcularFechasDeCorteYPago();
+
+                    document.getElementById('finance-panel').style.display = "block";
+                    document.getElementById('main-pay-btn').style.display = "block";
+                    document.getElementById('history-btn').style.display = "block";
+                    document.getElementById('simulador-panel').style.display = "flex";
+                    document.getElementById('auto-pay-panel').style.display = "flex";
+                } else {
+                    mostrarMensaje("✨ Creando nueva cuenta en Bancarlo Cloud...", "success");
+                    database.ref('users/' + myCleanKey).set({
+                        debito: 3000.00,
+                        credito: 1400.00,
+                        intereses_acumulados: 0.00
+                    });
+                }
+            });
+        }
+
+        function conmutarSimuladorMes() {
+            const interruptor = document.getElementById('toggle-simulador').checked;
+            const txtSim = document.getElementById('txt-simulador');
+
+            if (interruptor) {
+                txtSim.innerText = "Activo (Corte de mes cada 30s)";
+                txtSim.style.color = "#ef4444";
+                
+                temporizadorMes = setInterval(() => {
+                    if (deudaDeConsumo > 0) {
+                        let recargoInteres = deudaDeConsumo * 0.12;
+                        let nuevosIntereses = interesesAcumulados + recargoInteres;
+                        
+                        database.ref('users/' + myCleanKey).update({
+                            intereses_acumulados: parseFloat(nuevosIntereses.toFixed(2))
+                        });
+                        mostrarMensaje(`⚠️ ¡Fin de plazo de 15 días tras el corte! Se sumó 12% de interés ($${recargoInteres.toFixed(2)}).`, "error");
+                    }
+                }, 30000);
+            } else {
+                if (temporizadorMes) clearInterval(temporizadorMes);
+                txtSim.innerText = "Desactivado";
+                txtSim.style.color = "#64748b";
+            }
+        }
+
+        function conmutarPagoMensualPanel() {
+            const interruptor = document.getElementById('toggle-auto-pay').checked;
+            const txtAuto = document.getElementById('txt-auto-pay');
+            
+            if (interruptor) {
+                txtAuto.innerText = "Activo -> Envío automático a carloitzae52@gmail.com";
+                txtAuto.style.color = "#f59e0b";
+                mostrarMensaje("⚙️ Liquidación automática programada dentro del límite de 15 días.", "success");
+                
+                temporizadorPagoAuto = setInterval(() => {
+                    if (deudaTotalExigible > 0) {
+                        console.log("[Auto-Pay] Ejecutando pago máximo con tarjeta de débito por fecha límite...");
+                        ejecutarPagoUnico();
+                    }
+                }, 35000);
+            } else {
+                if (temporizadorPagoAuto) clearInterval(temporizadorPagoAuto);
+                txtAuto.innerText = "Desactivado";
+                txtAuto.style.color = "#64748b";
+                mostrarMensaje("🛑 Pago automático mensual cancelado.", "error");
+            }
+        }
+
+        function ejecutarPagoUnico() {
+            if (!myCleanKey) return;
+            
+            if (deudaTotalExigible <= 0) {
+                mostrarMensaje("✔ Tu tarjeta se encuentra al corriente, sin deudas.", "success");
+                return;
+            }
+
+            if (saldoDebito < deudaTotalExigible) {
+                mostrarMensaje(`❌ Saldo insuficiente en tu Débito para transferir $${deudaTotalExigible.toFixed(2)}`, "error");
+                return;
+            }
+
+            database.ref('users/' + destinoCleanKey).once('value').then((snapshot) => {
+                let datosDestino = snapshot.val();
+                let saldoDebitoDestinoActual = 0.00;
+                
+                if (datosDestino && datosDestino.debito !== undefined) {
+                    saldoDebitoDestinoActual = parseFloat(datosDestino.debito);
+                }
+
+                let nuevoDebitoOrigen = saldoDebito - deudaTotalExigible;
+                let nuevoDebitoDestino = saldoDebitoDestinoActual + deudaTotalExigible;
+
+                let actualizaciones = {};
+                actualizaciones['/users/' + myCleanKey + '/debito'] = parseFloat(nuevoDebitoOrigen.toFixed(2));
+                actualizaciones['/users/' + myCleanKey + '/credito'] = 2000.00;
+                actualizaciones['/users/' + myCleanKey + '/intereses_acumulados'] = 0.00;
+                
+                actualizaciones['/users/' + destinoCleanKey + '/debito'] = parseFloat(nuevoDebitoDestino.toFixed(2));
+
+                return database.ref().update(actualizaciones);
+            }).then(() => {
+                mostrarMensaje(`💸 Transacción Completa. Se pagaron $${deudaTotalExigible.toFixed(2)} con tu Tarjeta de Débito a ${destinoCorreo}.`, "success");
+            }).catch((err) => {
+                mostrarMensaje("❌ Error en la dispersión en la nube de Firebase.", "error");
+                console.error(err);
+            });
+        }
+
+        function abrirHistorial() {
+            if(!myCleanKey) return;
+            const lista = document.getElementById('lista-cargos');
+            lista.innerHTML = "";
+
+            if(deudaTotalExigible <= 0) {
+                lista.innerHTML = "<div style='color:#64748b; text-align:center; padding:10px;'>No tienes deudas pasadas ni recargos.</div>";
+            } else {
+                lista.innerHTML += `
+                    <div class="history-item"><span class="label">Consumo acumulado:</span><span class="value">$${deudaDeConsumo.toFixed(2)}</span></div>
+                    <div class="history-item"><span class="label">Intereses acumulados:</span><span class="value" style="color:#ef4444;">$${interesesAcumulados.toFixed(2)}</span></div>
+                    <div class="history-item" style="border-top: 1px dashed #e2cb99; margin-top:5px; font-weight:bold;"><span class="label" style="color:white;">Total Exigible:</span><span style="color:#ef4444;">$${deudaTotalExigible.toFixed(2)}</span></div>
+                `;
+            }
+            document.getElementById('modal-historial').style.display = "block";
+        }
+
+        function cerrarHistorial() {
+            document.getElementById('modal-historial').style.display = "none";
+        }
+
+        function desactivarTodo() {
+            if (temporizadorMes) clearInterval(temporizadorMes);
+            if (temporizadorPagoAuto) clearInterval(temporizadorPagoAuto);
+            
+            const txtAuto = document.getElementById('txt-auto-pay');
+            if (txtAuto) {
+                txtAuto.innerText = "Desactivado";
+                txtAuto.style.color = "#64748b";
+            }
+            const toggleAuto = document.getElementById('toggle-auto-pay');
+            if (toggleAuto) toggleAuto.checked = false;
+            
+            const txtSim = document.getElementById('txt-simulador');
+            if(txtSim) {
+                txtSim.innerText = "Desactivado";
+                txtSim.style.color = "#64748b";
+            }
+            const toggleSim = document.getElementById('toggle-simulador');
+            if(toggleSim) toggleSim.checked = false;
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            const statusBox = document.getElementById('status-box');
+            statusBox.className = "status-msg " + tipo;
+            statusBox.innerText = texto;
+            statusBox.style.display = "block";
+            setTimeout(() => { statusBox.style.display = 'none'; }, 6000);
+        }
+    </script>
+</body>
+</html>
