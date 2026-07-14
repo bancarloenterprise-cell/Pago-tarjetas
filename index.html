@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bancarlo Cloud - Control de Crédito y Dispersión</title>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -12,6 +13,7 @@
         .payment-container { max-width: 420px; margin: 30px auto; background: #111111; border-radius: 16px; border: 2px solid #e2cb99; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .title { font-size: 18px; font-weight: 800; color: #e2cb99; text-transform: uppercase; letter-spacing: 1px; margin-top: 0; margin-bottom: 20px; text-align: center; border-bottom: 1px solid #222222; padding-bottom: 12px; }
         .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; }
         .form-input { width: 100%; padding: 14px; border: 1px solid #333333; border-radius: 10px; font-size: 15px; box-sizing: border-box; background-color: #050505; color: white; }
         .btn-connect { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 20px; text-transform: uppercase; }
         .data-box { background: #090909; border: 1px solid #222222; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
@@ -29,6 +31,9 @@
         input:checked + .slider-auto:before { transform: translateX(20px); }
         .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 600; text-align: center; display: none; }
         .success { background-color: #10b981; color: #000000; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+        .modal-content { background-color: #111111; margin: 15% auto; padding: 20px; border: 1px solid #e2cb99; width: 85%; max-width: 400px; border-radius: 12px; }
+        .close-btn { background: #ef4444; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 10px;}
     </style>
 </head>
 <body>
@@ -36,23 +41,24 @@
     <div class="payment-container">
         <div class="title">Amortización Parcial Cloud</div>
         <div class="form-group">
+            <label>Correo Electrónico:</label>
             <input type="email" id="user-email" class="form-input" placeholder="tu_correo@gmail.com">
         </div>
         <button class="btn-connect" onclick="conectarCuentaNube()">Conectar Cuenta</button>
 
         <div class="data-box" id="finance-panel">
-            <div class="data-row"><span class="label">Saldo en Débito:</span><span class="value" id="val-debito">$0.00</span></div>
+            <div class="data-row"><span class="label">Saldo Débito:</span><span class="value" id="val-debito">$0.00</span></div>
             <div class="data-row"><span class="label">Deuda Total:</span><span class="debt-highlight" id="val-deuda">$0.00</span></div>
         </div>
 
-        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoParcial()">Realizar Pago Parcial</button>
+        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoParcial()">Pagar con Saldo Disponible</button>
 
         <div class="control-panel-box" id="auto-pay-panel" style="display:none; display:flex;">
             <div>
-                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático</div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático (Cada 14 días)</div>
             </div>
             <label class="switch">
-                <input type="checkbox" id="toggle-auto-pay" onchange="conmutarPagoMinuto()">
+                <input type="checkbox" id="toggle-auto-pay" onchange="conmutarPagoCatorcenal()">
                 <span class="slider-auto"></span>
             </label>
         </div>
@@ -63,7 +69,7 @@
         const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        let myCleanKey = "", saldoDebito = 0, deudaTotal = 0;
+        let myCleanKey = "", saldoDebito = 0, deudaTotalExigible = 0;
 
         function conectarCuentaNube() {
             const email = document.getElementById('user-email').value.trim().toLowerCase().replace(/\./g, '_');
@@ -72,31 +78,31 @@
             database.ref('users/' + myCleanKey).on('value', (s) => {
                 const d = s.val() || {};
                 saldoDebito = d.debito || 0;
-                deudaTotal = d.deuda || 0;
+                deudaTotalExigible = (2000 - (d.credito || 2000)) + (d.intereses_acumulados || 0);
                 document.getElementById('val-debito').innerText = '$' + saldoDebito.toFixed(2);
-                document.getElementById('val-deuda').innerText = '$' + deudaTotal.toFixed(2);
+                document.getElementById('val-deuda').innerText = '$' + deudaTotalExigible.toFixed(2);
                 document.getElementById('finance-panel').style.display = "block";
                 document.getElementById('main-pay-btn').style.display = "block";
             });
         }
 
         function ejecutarPagoParcial() {
-            let abono = Math.min(saldoDebito, deudaTotal);
-            if(abono <= 0) return;
+            let abono = Math.min(saldoDebito, deudaTotalExigible);
+            if(abono <= 0) return mostrarMensaje("No hay fondos o deuda pendiente.", "error");
             database.ref('users/' + myCleanKey).update({ 
-                debito: saldoDebito - abono, 
-                deuda: deudaTotal - abono 
+                debito: saldoDebito - abono,
+                credito: (d) => (d || 2000) + abono,
+                intereses_acumulados: 0
             });
+            mostrarMensaje("Pago procesado: $" + abono.toFixed(2), "success");
         }
 
-        function conmutarPagoMinuto() {
+        function conmutarPagoCatorcenal() {
             const active = document.getElementById('toggle-auto-pay').checked;
             if(active) {
-                mostrarMensaje("Pago automático activado (cada min)", "success");
-                window.intervaloPago = setInterval(ejecutarPagoParcial, 60000); 
-            } else { 
-                clearInterval(window.intervaloPago); 
-            }
+                mostrarMensaje("Auto-pago activado cada 14 días", "success");
+                window.intervaloPago = setInterval(ejecutarPagoParcial, 1209600000); 
+            } else { clearInterval(window.intervaloPago); }
         }
 
         function mostrarMensaje(txt, tipo) { 
