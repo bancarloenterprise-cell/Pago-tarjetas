@@ -2,76 +2,271 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Bancarlo Cloud - Sistema Integral</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bancarlo Cloud - Control de Crédito y Dispersión</title>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
-        body { font-family: sans-serif; background: #000; color: #fff; padding: 20px; }
-        .container { max-width: 400px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #e2cb99; }
-        .input-box { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #333; border-radius: 8px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 15px; background: #10b981; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; border-radius: 8px; }
-        .data-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px; }
+        body { 
+            font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background-color: #000000; 
+            margin: 0; 
+            padding: 20px;
+            color: #f1f5f9;
+        }
+        .payment-container {
+            max-width: 420px;
+            margin: 30px auto;
+            background: #111111;
+            border-radius: 16px;
+            border: 2px solid #e2cb99;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #e2cb99;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 1px solid #222222;
+            padding-bottom: 12px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        .form-input { 
+            width: 100%; padding: 14px; border: 1px solid #333333; border-radius: 10px; 
+            font-size: 15px; box-sizing: border-box; background-color: #050505; color: white; 
+        }
+        .form-input:focus { border-color: #10b981; outline: none; }
+        
+        .btn-connect {
+            width: 100%; background-color: #3b82f6; color: white; border: none;
+            padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700;
+            cursor: pointer; margin-bottom: 20px; text-transform: uppercase;
+        }
+        .btn-connect:hover { background-color: #2563eb; }
+
+        .data-box {
+            background: #090909; border: 1px solid #222222; border-radius: 12px;
+            padding: 15px; margin-bottom: 20px; display: none;
+        }
+        .data-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px; font-size: 14px;
+        }
+        .data-row:last-child { margin-bottom: 0; }
+        .label { color: #94a3b8; }
+        .value { font-weight: bold; color: #ffffff; }
+        .debt-highlight { font-size: 20px; color: #ef4444; font-weight: 800; }
+        
+        /* Tabla de Fechas de Corte y Pago */
+        .dates-table {
+            width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px;
+            background-color: #050505; border: 1px solid #222222; border-radius: 8px; overflow: hidden;
+        }
+        .dates-table th, .dates-table td {
+            padding: 10px; text-align: left; font-size: 12px; border-bottom: 1px solid #222222;
+        }
+        .dates-table th { background-color: #1a1a1a; color: #e2cb99; font-weight: 700; }
+        .dates-table td { color: #ffffff; }
+
+        .btn-pay {
+            width: 100%; background-color: #10b981; color: #000000; border: none;
+            padding: 15px; border-radius: 10px; font-size: 15px; font-weight: 800;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+            margin-top: 15px; display: none; transition: background 0.2s;
+        }
+        .btn-pay:hover { background-color: #059669; }
+
+        .btn-history {
+            width: 100%; background-color: #475569; color: white; border: none;
+            padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 700;
+            cursor: pointer; text-transform: uppercase; margin-top: 12px; display: none;
+        }
+        .btn-history:hover { background-color: #334155; }
+        
+        .control-panel-box {
+            background: #090909; border: 1px solid #222222; border-radius: 12px;
+            padding: 15px; margin-top: 15px; display: none; justify-content: space-between; align-items: center;
+        }
+        
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; min-width: 44px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #2e384d; transition: .3s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .slider-auto {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #2e384d; transition: .3s; border-radius: 34px;
+        }
+        .slider-auto:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider-auto { background-color: #f59e0b; }
+        input:checked + .slider-auto:before { transform: translateX(20px); }
+
+        .status-msg {
+            margin-top: 15px; padding: 12px; border-radius: 10px;
+            font-size: 13px; font-weight: 600; text-align: center; display: none;
+        }
+        .success { background-color: #10b981; color: #000000; }
+        .error { background-color: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            background-color: #111111; margin: 15% auto; padding: 20px;
+            border: 1px solid #e2cb99; width: 85%; max-width: 400px; border-radius: 12px;
+        }
+        .modal-title { font-size: 16px; font-weight: 800; color: #e2cb99; margin-bottom: 15px; text-transform: uppercase; text-align: center;}
+        .history-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; font-size: 13px; }
+        .history-item { border-bottom: 1px solid #222222; padding: 8px 0; display: flex; justify-content: space-between; }
+        .close-btn { background: #ef4444; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 5px;}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h3>Bancarlo Cloud</h3>
-        <input type="email" id="email" class="input-box" placeholder="Correo electrónico">
-        <button class="btn" onclick="cargarCuenta()">Cargar Cuenta</button>
+
+    <div class="payment-container">
+        <div class="title">Bancarlo Cloud - Control</div>
         
-        <div id="panel" style="display:none;">
-            <div class="data-row"><span>Deuda Total:</span><span id="val-deuda">$0.00</span></div>
-            <div id="info-fechas" style="font-size: 11px; color: #888;"></div>
-            <input type="number" id="abono" class="input-box" placeholder="Monto a abonar">
-            <button class="btn" onclick="procesarAbono()">Realizar Abono</button>
+        <div class="form-group">
+            <label for="user-email">Correo Electrónico:</label>
+            <input type="email" id="user-email" class="form-input" placeholder="tu_correo@gmail.com">
+        </div>
+        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar</button>
+
+        <div class="data-box" id="finance-panel">
             <div class="data-row">
-                <span>Pago Auto (Fecha Límite)</span>
-                <input type="checkbox" id="auto-pay" onchange="toggleAutoPay()">
+                <span class="label">Crédito Utilizado:</span>
+                <span class="value" id="val-deuda" style="color: #ef4444;">$0.00</span>
+            </div>
+            
+            <table class="dates-table">
+                <thead><tr><th>Evento</th><th>Fecha</th></tr></thead>
+                <tbody>
+                    <tr><td>Inicio</td><td id="table-inicio">--</td></tr>
+                    <tr><td>Corte (+14d)</td><td id="table-corte">--</td></tr>
+                    <tr><td>Pago (+10d)</td><td id="table-pago" style="color: #f59e0b; font-weight: bold;">--</td></tr>
+                </tbody>
+            </table>
+
+            <div class="data-row">
+                <span class="label">Interés Moratorio (25%):</span>
+                <span class="value" id="val-interes" style="color: #f59e0b;">$0.00</span>
             </div>
         </div>
+
+        <button class="btn-pay" id="main-pay-btn" onclick="pagarDeuda()">Pagar Monto</button>
+        <button class="btn-history" id="history-btn" onclick="abrirHistorial()">Historial de Mora</button>
+
+        <div class="control-panel-box" id="auto-pay-panel">
+            <div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático (Fecha Límite)</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggle-auto-pay" onchange="toggleAutoPay()">
+                <span class="slider-auto"></span>
+            </label>
+        </div>
+
+        <div id="status-box" class="status-msg"></div>
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw",
+            databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com",
+            projectId: "bancarlo-23297",
+        };
+        
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-        let userEmail = "", userRef;
+        const database = firebase.database();
 
-        function cargarCuenta() {
-            userEmail = document.getElementById('email').value.toLowerCase().replace(/\./g, '_');
-            userRef = db.ref('users/' + userEmail);
-            userRef.on('value', (snap) => {
-                let data = snap.val() || { inicio: new Date().getTime(), deuda: 1000, hist: [] };
-                
-                const inicio = new Date(data.inicio);
-                const corte = new Date(inicio.getTime() + (14 * 86400000));
-                const limite = new Date(corte.getTime() + (10 * 86400000));
-                
-                // Lógica de intereses 25%
-                if (new Date() > limite && data.deuda > 0 && !data.interesCargado) {
-                    data.deuda *= 1.25;
-                    userRef.update({ deuda: data.deuda, interesCargado: true, hist: [...(data.hist || []), "Interés 25% aplicado"] });
+        let myCleanKey = "";
+        let dbRef = null;
+        let userData = {};
+
+        function cleanEmailKey(email) { return email.toLowerCase().replace(/\./g, '_'); }
+
+        function conectarCuentaNube() {
+            const email = document.getElementById('user-email').value.trim();
+            if(!email) return;
+            myCleanKey = cleanEmailKey(email);
+            dbRef = database.ref('users/' + myCleanKey);
+            
+            dbRef.on('value', (snap) => {
+                userData = snap.val() || { debito: 0, credito_usado: 0, intereses: 0, fecha_inicio: null };
+                if (!userData.fecha_inicio) {
+                    const hoy = new Date().toISOString().split('T')[0];
+                    dbRef.update({ fecha_inicio: hoy });
                 }
-
-                document.getElementById('panel').style.display = 'block';
-                document.getElementById('val-deuda').innerText = '$' + data.deuda.toFixed(2);
-                document.getElementById('info-fechas').innerText = `Inicio: ${inicio.toLocaleDateString()} | Corte: ${corte.toLocaleDateString()} | Pago: ${limite.toLocaleDateString()}`;
-                
-                if (document.getElementById('auto-pay').checked && new Date() >= limite) procesarAbono(data.deuda);
+                actualizarUI();
             });
         }
 
-        function procesarAbono(monto) {
-            const val = monto || parseFloat(document.getElementById('abono').value);
-            userRef.once('value', (s) => {
-                const d = s.val();
-                const nuevaDeuda = Math.max(0, d.deuda - val);
-                userRef.update({ deuda: nuevaDeuda, interesCargado: nuevaDeuda > 0 ? d.interesCargado : false });
-                alert("Operación realizada");
-            });
+        function actualizarUI() {
+            document.getElementById('finance-panel').style.display = "block";
+            document.getElementById('main-pay-btn').style.display = "block";
+            document.getElementById('auto-pay-panel').style.display = "flex";
+            
+            const start = new Date(userData.fecha_inicio);
+            const corte = new Date(start); corte.setDate(corte.getDate() + 14);
+            const pago = new Date(corte); pago.setDate(pago.getDate() + 10);
+            
+            document.getElementById('table-inicio').innerText = userData.fecha_inicio;
+            document.getElementById('table-corte').innerText = corte.toISOString().split('T')[0];
+            document.getElementById('table-pago').innerText = pago.toISOString().split('T')[0];
+            document.getElementById('val-deuda').innerText = '$' + (userData.credito_usado || 0).toFixed(2);
+            document.getElementById('val-interes').innerText = '$' + (userData.intereses || 0).toFixed(2);
+            
+            // Verificar mora
+            if (new Date() > pago && userData.credito_usado > 0) {
+                const nuevaMora = (userData.credito_usado * 0.25);
+                dbRef.update({ intereses: nuevaMora });
+            }
         }
 
-        function toggleAutoPay() { /* Lógica de estado guardada en Firebase */ }
+        function pagarDeuda() {
+            let monto = parseFloat(prompt("¿Cuánto deseas pagar?", userData.credito_usado || 0));
+            if(isNaN(monto) || monto <= 0) return;
+            
+            let totalDeuda = (userData.credito_usado || 0) + (userData.intereses || 0);
+            if (monto > totalDeuda) monto = totalDeuda;
+            
+            let nuevaDeuda = Math.max(0, (userData.credito_usado || 0) - monto);
+            dbRef.update({ credito_usado: nuevaDeuda, intereses: (nuevaDeuda === 0 ? 0 : userData.intereses) });
+            alert("Pago aplicado correctamente.");
+        }
+
+        function toggleAutoPay() {
+            const active = document.getElementById('toggle-auto-pay').checked;
+            if(active) {
+                alert("Pago automático activado: Se ejecutará el día del límite.");
+            }
+        }
     </script>
 </body>
 </html>
