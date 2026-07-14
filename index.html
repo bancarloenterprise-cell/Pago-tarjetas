@@ -2,105 +2,76 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bancarlo Cloud - Control Ajustado</title>
-    <!-- Firebase SDK -->
+    <title>Bancarlo Cloud - Sistema Integral</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { font-family: '-apple-system', sans-serif; background-color: #000; margin: 0; padding: 20px; color: #f1f5f9; }
-        .payment-container { max-width: 420px; margin: 30px auto; background: #111; border-radius: 16px; border: 2px solid #e2cb99; padding: 24px; }
-        .title { font-size: 18px; font-weight: 800; color: #e2cb99; text-transform: uppercase; margin-bottom: 20px; text-align: center; border-bottom: 1px solid #222; padding-bottom: 12px; }
-        .form-input { width: 100%; padding: 14px; border: 1px solid #333; border-radius: 10px; background: #050505; color: white; margin-bottom: 15px; box-sizing: border-box; }
-        .btn-connect { width: 100%; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; }
-        .data-box { background: #090909; border: 1px solid #222; border-radius: 12px; padding: 15px; margin-top: 20px; display: none; }
-        .data-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
-        .dates-table { width: 100%; border-collapse: collapse; margin: 10px 0; background: #050505; border: 1px solid #222; border-radius: 8px; }
-        .dates-table th, .dates-table td { padding: 10px; font-size: 12px; border-bottom: 1px solid #222; }
-        .btn-pay { width: 100%; background: #10b981; color: #000; border: none; padding: 15px; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 15px; display: none; }
-        .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 13px; text-align: center; display: none; }
-        .success { background: #10b981; color: #000; }
-        .error { background: #7f1d1d; color: #fca5a5; }
+        body { font-family: sans-serif; background: #000; color: #fff; padding: 20px; }
+        .container { max-width: 400px; margin: auto; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #e2cb99; }
+        .input-box { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #333; border-radius: 8px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; background: #10b981; border: none; cursor: pointer; font-weight: bold; margin-top: 10px; border-radius: 8px; }
+        .data-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 14px; }
     </style>
 </head>
 <body>
-
-    <div class="payment-container">
-        <div class="title">Bancarlo Cloud</div>
-        <input type="email" id="user-email" class="form-input" placeholder="tu_correo@gmail.com">
-        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar Cuenta</button>
-
-        <div class="data-box" id="finance-panel">
-            <div class="data-row"><span>Crédito Disponible:</span><span id="val-credito">$0.00</span></div>
-            <div class="data-row"><span>Saldo en Débito:</span><span id="val-debito" style="color: #10b981;">$0.00</span></div>
-            <table class="dates-table">
-                <tr><th>Concepto</th><th>Fecha</th></tr>
-                <tr><td>Fecha de Corte</td><td id="table-corte">--/--/----</td></tr>
-                <tr><td>Fecha Límite (10 días)</td><td id="table-pago" style="color: #f59e0b; font-weight: bold;">--/--/----</td></tr>
-            </table>
-            <div class="data-row" style="margin-top: 15px; font-weight: bold;"><span>Total Exigible:</span><span id="val-deuda">$0.00</span></div>
+    <div class="container">
+        <h3>Bancarlo Cloud</h3>
+        <input type="email" id="email" class="input-box" placeholder="Correo electrónico">
+        <button class="btn" onclick="cargarCuenta()">Cargar Cuenta</button>
+        
+        <div id="panel" style="display:none;">
+            <div class="data-row"><span>Deuda Total:</span><span id="val-deuda">$0.00</span></div>
+            <div id="info-fechas" style="font-size: 11px; color: #888;"></div>
+            <input type="number" id="abono" class="input-box" placeholder="Monto a abonar">
+            <button class="btn" onclick="procesarAbono()">Realizar Abono</button>
+            <div class="data-row">
+                <span>Pago Auto (Fecha Límite)</span>
+                <input type="checkbox" id="auto-pay" onchange="toggleAutoPay()">
+            </div>
         </div>
-        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoUnico()">Pagar con Tarjeta de Débito</button>
-        <div id="status-box" class="status-msg"></div>
     </div>
 
     <script>
         const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const destinoCleanKey = "carloitzae52@gmail_com"; // Destino del pago
-        let myKey = "", userData = {};
+        let userEmail = "", userRef;
 
-        function conectarCuentaNube() {
-            const email = document.getElementById('user-email').value.trim().toLowerCase().replace(/\./g, '_');
-            myKey = email;
-            db.ref('users/' + myKey).on('value', (s) => {
-                userData = s.val();
-                if(!userData) return;
-
-                // Cálculo de fechas: 10 días tras el corte
-                const hoy = new Date();
-                const corte = new Date(hoy);
-                const limite = new Date(hoy);
-                limite.setDate(corte.getDate() + 10); 
-
-                document.getElementById('table-corte').innerText = corte.toLocaleDateString();
-                document.getElementById('table-pago').innerText = limite.toLocaleDateString();
-
-                const deuda = (2000 - (userData.credito || 2000)) + (userData.intereses_acumulados || 0);
-                document.getElementById('val-debito').innerText = '$' + (userData.debito || 0).toFixed(2);
-                document.getElementById('val-credito').innerText = '$' + (userData.credito || 0).toFixed(2);
-                document.getElementById('val-deuda').innerText = '$' + deuda.toFixed(2);
+        function cargarCuenta() {
+            userEmail = document.getElementById('email').value.toLowerCase().replace(/\./g, '_');
+            userRef = db.ref('users/' + userEmail);
+            userRef.on('value', (snap) => {
+                let data = snap.val() || { inicio: new Date().getTime(), deuda: 1000, hist: [] };
                 
-                document.getElementById('finance-panel').style.display = "block";
-                document.getElementById('main-pay-btn').style.display = "block";
+                const inicio = new Date(data.inicio);
+                const corte = new Date(inicio.getTime() + (14 * 86400000));
+                const limite = new Date(corte.getTime() + (10 * 86400000));
+                
+                // Lógica de intereses 25%
+                if (new Date() > limite && data.deuda > 0 && !data.interesCargado) {
+                    data.deuda *= 1.25;
+                    userRef.update({ deuda: data.deuda, interesCargado: true, hist: [...(data.hist || []), "Interés 25% aplicado"] });
+                }
+
+                document.getElementById('panel').style.display = 'block';
+                document.getElementById('val-deuda').innerText = '$' + data.deuda.toFixed(2);
+                document.getElementById('info-fechas').innerText = `Inicio: ${inicio.toLocaleDateString()} | Corte: ${corte.toLocaleDateString()} | Pago: ${limite.toLocaleDateString()}`;
+                
+                if (document.getElementById('auto-pay').checked && new Date() >= limite) procesarAbono(data.deuda);
             });
         }
 
-        function ejecutarPagoUnico() {
-            const deuda = (2000 - (userData.credito || 2000)) + (userData.intereses_acumulados || 0);
-            if (userData.debito < deuda) {
-                mostrarMensaje("Saldo insuficiente en débito.", "error");
-                return;
-            }
-
-            // Realizar transferencia entre nodos
-            let actualizaciones = {};
-            actualizaciones['/users/' + myKey + '/debito'] = userData.debito - deuda;
-            actualizaciones['/users/' + myKey + '/credito'] = 2000.00;
-            actualizaciones['/users/' + myKey + '/intereses_acumulados'] = 0.00;
-            
-            db.ref().update(actualizaciones).then(() => {
-                mostrarMensaje("Pago realizado correctamente.", "success");
+        function procesarAbono(monto) {
+            const val = monto || parseFloat(document.getElementById('abono').value);
+            userRef.once('value', (s) => {
+                const d = s.val();
+                const nuevaDeuda = Math.max(0, d.deuda - val);
+                userRef.update({ deuda: nuevaDeuda, interesCargado: nuevaDeuda > 0 ? d.interesCargado : false });
+                alert("Operación realizada");
             });
         }
 
-        function mostrarMensaje(txt, tipo) {
-            const box = document.getElementById('status-box');
-            box.className = "status-msg " + tipo;
-            box.innerText = txt;
-            box.style.display = "block";
-        }
+        function toggleAutoPay() { /* Lógica de estado guardada en Firebase */ }
     </script>
 </body>
 </html>
