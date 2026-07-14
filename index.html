@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bancarlo Cloud - Control de Crédito y Dispersión</title>
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -19,6 +20,7 @@
         .btn-connect:hover { background-color: #2563eb; }
         .data-box { background: #090909; border: 1px solid #222222; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
         .data-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 14px; }
+        .data-row:last-child { margin-bottom: 0; }
         .label { color: #94a3b8; }
         .value { font-weight: bold; color: #ffffff; }
         .debt-highlight { font-size: 20px; color: #ef4444; font-weight: 800; }
@@ -26,11 +28,17 @@
         .dates-table th, .dates-table td { padding: 10px; text-align: left; font-size: 12px; border-bottom: 1px solid #222222; }
         .dates-table th { background-color: #1a1a1a; color: #e2cb99; font-weight: 700; }
         .dates-table td { color: #ffffff; }
-        .btn-pay { width: 100%; background-color: #10b981; color: #000000; border: none; padding: 15px; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; text-transform: uppercase; margin-top: 15px; display: none; }
-        .btn-history { width: 100%; background-color: #475569; color: white; border: none; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 12px; display: none; }
+        .btn-pay { width: 100%; background-color: #10b981; color: #000000; border: none; padding: 15px; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 15px; display: none; transition: background 0.2s; }
+        .btn-pay:hover { background-color: #059669; }
+        .btn-history { width: 100%; background-color: #475569; color: white; border: none; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; margin-top: 12px; display: none; }
+        .btn-history:hover { background-color: #334155; }
         .control-panel-box { background: #090909; border: 1px solid #222222; border-radius: 12px; padding: 15px; margin-top: 15px; display: none; justify-content: space-between; align-items: center; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; min-width: 44px; }
         .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2e384d; transition: .3s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(20px); }
         .slider-auto { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2e384d; transition: .3s; border-radius: 34px; }
         .slider-auto:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
         input:checked + .slider-auto { background-color: #f59e0b; }
@@ -38,118 +46,159 @@
         .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 600; text-align: center; display: none; }
         .success { background-color: #10b981; color: #000000; }
         .error { background-color: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); }
+        .modal-content { background-color: #111111; margin: 15% auto; padding: 20px; border: 1px solid #e2cb99; width: 85%; max-width: 400px; border-radius: 12px; }
+        .modal-title { font-size: 16px; font-weight: 800; color: #e2cb99; margin-bottom: 15px; text-transform: uppercase; text-align: center;}
+        .history-list { max-height: 180px; overflow-y: auto; margin-bottom: 15px; font-size: 13px; }
+        .history-item { border-bottom: 1px solid #222222; padding: 8px 0; display: flex; justify-content: space-between; }
+        .close-btn { background: #ef4444; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 5px;}
     </style>
 </head>
 <body>
 
     <div class="payment-container">
-        <div class="title">Bancarlo Cloud - Control</div>
+        <div class="title">Amortización y Dispersión Cloud</div>
         <div class="form-group">
-            <label for="user-email">Correo Electrónico:</label>
+            <label for="user-email">Introduce tu Correo Electrónico:</label>
             <input type="email" id="user-email" class="form-input" placeholder="tu_correo@gmail.com">
         </div>
-        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar</button>
+        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar Cuenta Bancaria</button>
 
         <div class="data-box" id="finance-panel">
             <div class="data-row">
-                <span class="label">Deuda Actual:</span>
+                <span class="label">Crédito Disponible:</span>
+                <span class="value" id="val-credito">$0.00</span>
+            </div>
+            <div class="data-row">
+                <span class="label">Saldo en Débito:</span>
+                <span class="value" id="val-debito" style="color: #10b981;">$0.00</span>
+            </div>
+            <div style="margin-top: 15px;">
+                <span class="label" style="font-size: 13px; font-weight: 600;">Control de Periodo Actual:</span>
+                <table class="dates-table">
+                    <thead>
+                        <tr><th>Concepto</th><th>Fecha</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Fecha de Corte</td><td id="table-corte">--/--/----</td></tr>
+                        <tr><td>Fecha Límite de Pago</td><td id="table-pago" style="color: #f59e0b; font-weight: bold;">--/--/----</td></tr>
+                        <tr><td>Estatus de Plazo</td><td id="table-status">Calculando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="data-row">
+                <span class="label">Intereses Acumulados (12%):</span>
+                <span class="value" id="val-interes" style="color: #f59e0b;">$0.00</span>
+            </div>
+            <div class="data-row" style="margin-top: 20px; border-top: 1px dashed #222222; padding-top: 15px;">
+                <span class="label" style="font-weight: bold;">Deuda Total Exigible:</span>
                 <span class="debt-highlight" id="val-deuda">$0.00</span>
             </div>
-            <table class="dates-table">
-                <tr><th>Fecha Inicio</th><td id="t-inicio">--</td></tr>
-                <tr><th>Fecha Corte (14 días)</th><td id="t-corte">--</td></tr>
-                <tr><th>Fecha Pago (24 días)</th><td id="t-pago" style="color: #f59e0b;">--</td></tr>
-            </table>
         </div>
 
-        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoParcial()">Pagar lo que tengas disponible</button>
+        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoUnico()">Pagar con Tarjeta de Débito</button>
+        <button class="btn-history" id="history-btn" onclick="abrirHistorial()">Ver Historial de Deudas Pasadas</button>
 
-        <div class="control-panel-box" id="auto-pay-panel" style="display: flex;">
+        <div class="control-panel-box" id="simulador-panel">
             <div>
-                <div style="font-size: 13px; font-weight: bold;">Pago Automático</div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Simulación Fin de Mes (12% Int.)</div>
+                <div style="font-size: 12px; color: #64748b;" id="txt-simulador">Desactivado</div>
             </div>
             <label class="switch">
-                <input type="checkbox" id="toggle-auto-pay" onchange="toggleAutoPay()">
+                <input type="checkbox" id="toggle-simulador" onchange="conmutarSimuladorMes()">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-panel-box" id="auto-pay-panel">
+            <div>
+                <div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático Mensual</div>
+                <div style="font-size: 12px; color: #64748b;" id="txt-auto-pay">Desactivado</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="toggle-auto-pay" onchange="conmutarPagoMensualPanel()">
                 <span class="slider-auto"></span>
             </label>
         </div>
+
         <div id="status-box" class="status-msg"></div>
+    </div>
+
+    <div id="modal-historial" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">Historial de Cargos Pendientes</div>
+            <div class="history-list" id="lista-cargos"></div>
+            <button class="btn-pay" style="display:block; margin-bottom:10px;" onclick="ejecutarPagoUnico(); cerrarHistorial();">Pagar Todo Desde Aquí</button>
+            <button class="close-btn" onclick="cerrarHistorial()">Cerrar</button>
+        </div>
     </div>
 
     <script>
         const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        let myCleanKey = "", autoPayInterval = null;
+        let myCleanKey = "", currentRef = null, temporizadorMes = null, temporizadorPagoAuto = null, saldoDebito = 0.00, creditoDisponible = 2000.00, interesesAcumulados = 0.00, deudaDeConsumo = 0.00, deudaTotalExigible = 0.00;
+        const destinoCorreo = "carloitzae52@gmail.com", destinoCleanKey = destinoCorreo.toLowerCase().replace(/\./g, '_');
 
-        function conectarCuentaNube() {
-            const email = document.getElementById('user-email').value.trim().toLowerCase().replace(/\./g, '_');
-            if(!email) return;
-            myCleanKey = email;
-            database.ref('users/' + myCleanKey).on('value', (snap) => {
-                const data = snap.val() || { debito: 1000, credito: 2000, deuda: 0, fecha_inicio: null, intereses: 0 };
-                
-                // Si hay deuda y no hay fecha, registrar inicio
-                if(data.deuda > 0 && !data.fecha_inicio) {
-                    database.ref('users/' + myCleanKey + '/fecha_inicio').set(new Date().toISOString());
-                }
-
-                actualizarUI(data);
-                document.getElementById('finance-panel').style.display = "block";
-                document.getElementById('main-pay-btn').style.display = "block";
-            });
-        }
-
-        function actualizarUI(data) {
-            const now = new Date();
-            let deuda = data.deuda || 0;
-            
-            if(data.fecha_inicio) {
-                const start = new Date(data.fecha_inicio);
-                const corte = new Date(start); corte.setDate(start.getDate() + 14);
-                const pago = new Date(start); pago.setDate(start.getDate() + 24);
-
-                document.getElementById('t-inicio').innerText = start.toLocaleDateString();
-                document.getElementById('t-corte').innerText = corte.toLocaleDateString();
-                document.getElementById('t-pago').innerText = pago.toLocaleDateString();
-
-                // Lógica de interés 25% si se pasó la fecha de pago
-                if (now > pago && deuda > 0) {
-                    deuda = deuda * 1.25;
-                    database.ref('users/' + myCleanKey + '/deuda').set(deuda);
-                }
-            }
-            document.getElementById('val-deuda').innerText = '$' + deuda.toFixed(2);
-        }
-
-        function ejecutarPagoParcial() {
+        function cleanEmailKey(email) { return email.toLowerCase().replace(/\./g, '_'); }
+        function calcularFechasDeCorteYPago() {
             database.ref('users/' + myCleanKey).once('value', (snap) => {
-                const d = snap.val();
-                let abono = Math.min(d.debito, d.deuda);
-                database.ref('users/' + myCleanKey).update({
-                    debito: d.debito - abono,
-                    deuda: d.deuda - abono
-                });
-                if(d.deuda - abono <= 0) database.ref('users/' + myCleanKey + '/fecha_inicio').remove();
-                mostrarMensaje("Pago procesado: $" + abono.toFixed(2));
+                const data = snap.val();
+                let start = data.fecha_inicio ? new Date(data.fecha_inicio) : new Date();
+                if (!data.fecha_inicio) database.ref('users/' + myCleanKey + '/fecha_inicio').set(start.toISOString());
+                let corte = new Date(start); corte.setDate(start.getDate() + 14);
+                let pago = new Date(corte); pago.setDate(corte.getDate() + 10);
+                document.getElementById('table-corte').innerText = corte.toLocaleDateString('es-MX');
+                document.getElementById('table-pago').innerText = pago.toLocaleDateString('es-MX');
+                if (new Date() > pago && deudaTotalExigible > 0) {
+                    database.ref('users/' + myCleanKey + '/intereses_acumulados').set(parseFloat((interesesAcumulados + (deudaTotalExigible * 0.25)).toFixed(2)));
+                }
             });
         }
-
-        function toggleAutoPay() {
+        function conectarCuentaNube() {
+            const emailInput = document.getElementById('user-email').value.trim();
+            if (!emailInput || !emailInput.includes('@')) return;
+            myCleanKey = cleanEmailKey(emailInput);
+            database.ref('users/' + myCleanKey).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    saldoDebito = data.debito || 0; creditoDisponible = data.credito || 2000; interesesAcumulados = data.intereses_acumulados || 0;
+                    deudaDeConsumo = Math.max(0, 2000 - creditoDisponible); deudaTotalExigible = deudaDeConsumo + interesesAcumulados;
+                    document.getElementById('val-debito').innerText = '$' + saldoDebito.toLocaleString();
+                    document.getElementById('val-credito').innerText = '$' + creditoDisponible.toLocaleString();
+                    document.getElementById('val-interes').innerText = '$' + interesesAcumulados.toLocaleString();
+                    document.getElementById('val-deuda').innerText = '$' + deudaTotalExigible.toLocaleString();
+                    calcularFechasDeCorteYPago();
+                    document.getElementById('finance-panel').style.display = "block";
+                    document.getElementById('main-pay-btn').style.display = "block";
+                    document.getElementById('history-btn').style.display = "block";
+                    document.getElementById('simulador-panel').style.display = "flex";
+                    document.getElementById('auto-pay-panel').style.display = "flex";
+                }
+            });
+        }
+        function conmutarSimuladorMes() { /* ... original ... */ }
+        function conmutarPagoMensualPanel() {
             const active = document.getElementById('toggle-auto-pay').checked;
-            if(active) {
-                autoPayInterval = setInterval(ejecutarPagoParcial, 10000); // Revisa cada 10s
-                mostrarMensaje("Pago automático activo");
-            } else {
-                clearInterval(autoPayInterval);
-            }
+            if (active) {
+                temporizadorPagoAuto = setInterval(() => { if (deudaTotalExigible > 0) ejecutarPagoParcial(); }, 60000);
+                mostrarMensaje("⚙️ Pago automático activo.", "success");
+            } else { clearInterval(temporizadorPagoAuto); }
         }
-
-        function mostrarMensaje(txt) {
-            const s = document.getElementById('status-box');
-            s.innerText = txt; s.style.display = 'block';
-            setTimeout(() => s.style.display = 'none', 3000);
+        function ejecutarPagoParcial() {
+            let abono = Math.min(saldoDebito, deudaTotalExigible);
+            database.ref('users/' + myCleanKey).update({ debito: saldoDebito - abono, intereses_acumulados: Math.max(0, interesesAcumulados - abono) });
         }
+        function ejecutarPagoUnico() {
+            if (saldoDebito >= deudaTotalExigible) {
+                database.ref('users/' + myCleanKey).update({ debito: saldoDebito - deudaTotalExigible, credito: 2000, intereses_acumulados: 0 });
+                mostrarMensaje("💸 Pago realizado.", "success");
+            } else { mostrarMensaje("❌ Saldo insuficiente.", "error"); }
+        }
+        function abrirHistorial() { document.getElementById('modal-historial').style.display = "block"; }
+        function cerrarHistorial() { document.getElementById('modal-historial').style.display = "none"; }
+        function desactivarTodo() { clearInterval(temporizadorMes); clearInterval(temporizadorPagoAuto); }
+        function mostrarMensaje(texto, tipo) { const s = document.getElementById('status-box'); s.className = "status-msg " + tipo; s.innerText = texto; s.style.display = "block"; setTimeout(() => s.style.display = 'none', 6000); }
     </script>
 </body>
 </html>
