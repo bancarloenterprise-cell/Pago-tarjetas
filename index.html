@@ -6,66 +6,53 @@
     <title>Bancarlo Cloud - Control de Crédito</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
+    <!-- [Estilos mantenidos igual para conservar estructura] -->
     <style>
         body { font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #000000; margin: 0; padding: 20px; color: #f1f5f9; }
         .payment-container { max-width: 420px; margin: 30px auto; background: #111111; border-radius: 16px; border: 2px solid #e2cb99; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .title { font-size: 18px; font-weight: 800; color: #e2cb99; text-transform: uppercase; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #222; padding-bottom: 12px; }
+        .title { font-size: 18px; font-weight: 800; color: #e2cb99; text-transform: uppercase; margin-bottom: 20px; text-align: center; border-bottom: 1px solid #222222; padding-bottom: 12px; }
         .form-group { margin-bottom: 20px; }
-        .form-input { width: 100%; padding: 14px; border: 1px solid #333; border-radius: 10px; background-color: #050505; color: white; box-sizing: border-box; }
-        .btn-connect { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
-        .data-box { background: #090909; border: 1px solid #222; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
+        .form-input { width: 100%; padding: 14px; border: 1px solid #333333; border-radius: 10px; background-color: #050505; color: white; }
+        .btn-connect { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; }
+        .data-box { background: #090909; border: 1px solid #222222; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 14px; font-size: 14px; }
-        .label { color: #94a3b8; }
-        .value { font-weight: bold; color: #ffffff; }
         .debt-highlight { font-size: 20px; color: #ef4444; font-weight: 800; }
-        .dates-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #050505; border: 1px solid #222; }
-        .dates-table th, .dates-table td { padding: 10px; font-size: 12px; border-bottom: 1px solid #222; }
-        .btn-pay { width: 100%; background-color: #10b981; color: #000; border: none; padding: 15px; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 15px; display: none; }
-        .control-panel-box { background: #090909; border: 1px solid #222; border-radius: 12px; padding: 15px; margin-top: 15px; display: none; align-items: center; justify-content: space-between; }
+        .dates-table { width: 100%; border-collapse: collapse; margin-top: 10px; background-color: #050505; border: 1px solid #222222; border-radius: 8px; }
+        .dates-table th, .dates-table td { padding: 10px; text-align: left; font-size: 12px; border-bottom: 1px solid #222222; color: #ffffff; }
+        .btn-pay { width: 100%; background-color: #10b981; color: #000000; border: none; padding: 15px; border-radius: 10px; font-weight: 800; cursor: pointer; display: none; }
+        .control-panel-box { background: #090909; border: 1px solid #222222; border-radius: 12px; padding: 15px; margin-top: 15px; display: none; justify-content: space-between; align-items: center; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2e384d; border-radius: 34px; transition: .3s; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2e384d; transition: .3s; border-radius: 34px; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
         input:checked + .slider { background-color: #f59e0b; }
         input:checked + .slider:before { transform: translateX(20px); }
         .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 13px; text-align: center; display: none; }
-        .success { background-color: #10b981; color: #000; }
+        .success { background-color: #10b981; color: #000000; }
         .error { background-color: #7f1d1d; color: #fca5a5; }
     </style>
 </head>
 <body>
-
     <div class="payment-container">
         <div class="title">Bancarlo Cloud</div>
         <div class="form-group">
             <input type="email" id="user-email" class="form-input" placeholder="tu_correo@gmail.com">
         </div>
-        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar</button>
-
+        <button class="btn-connect" onclick="conectarCuentaNube()">Conectar Cuenta</button>
         <div class="data-box" id="finance-panel">
-            <div class="data-row"><span class="label">Disponible:</span><span class="value" id="val-credito">$0.00</span></div>
-            <div class="data-row"><span class="label">Débito:</span><span class="value" id="val-debito" style="color: #10b981;">$0.00</span></div>
+            <div class="data-row"><span>Crédito Disponible:</span><span class="value" id="val-credito">$0.00</span></div>
+            <div class="data-row"><span>Saldo en Débito:</span><span class="value" id="val-debito" style="color: #10b981;">$0.00</span></div>
             <table class="dates-table">
                 <tr><th>Concepto</th><th>Fecha</th></tr>
-                <tr><td>Corte</td><td id="table-corte">--/--/----</td></tr>
-                <tr><td>Límite (14 días)</td><td id="table-pago" style="color: #f59e0b;">--/--/----</td></tr>
+                <tr><td>Fecha de Corte</td><td id="table-corte">--/--/----</td></tr>
+                <tr><td>Fecha Límite (14 días)</td><td id="table-pago" style="color: #f59e0b;">--/--/----</td></tr>
             </table>
-            <div class="data-row" style="margin-top:15px;"><span class="label">Interés (25%):</span><span class="value" id="val-interes" style="color: #f59e0b;">$0.00</span></div>
-            <div class="data-row"><span class="label">Total Exigible:</span><span class="debt-highlight" id="val-deuda">$0.00</span></div>
+            <div class="data-row"><span>Total Exigible:</span><span class="debt-highlight" id="val-deuda">$0.00</span></div>
         </div>
-
-        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoProgresivo()">Pagar con Débito</button>
-
+        <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoParcial()">Pagar con Saldo Disponible</button>
         <div class="control-panel-box" id="auto-pay-panel" style="display: flex;">
-            <div>
-                <div style="font-size: 14px; font-weight: bold;">Pago Automático</div>
-                <div style="font-size: 12px; color: #64748b;" id="txt-auto-pay">Desactivado</div>
-            </div>
-            <label class="switch">
-                <input type="checkbox" id="toggle-auto-pay" onchange="toggleAutoPay()">
-                <span class="slider"></span>
-            </label>
+            <div><div style="color: white; font-weight: bold;">Pago Automático en Fecha Límite</div><div id="txt-auto-pay" style="font-size: 11px;">Desactivado</div></div>
+            <label class="switch"><input type="checkbox" id="toggle-auto-pay" onchange="togglePagoAutomatico()"><span class="slider"></span></label>
         </div>
         <div id="status-box" class="status-msg"></div>
     </div>
@@ -73,80 +60,70 @@
     <script>
         const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        let myCleanKey = "", saldoDebito = 0, creditoDisponible = 2000, intereses = 0, autoPayInterval = null;
-        let fechaCorteFija = null;
+        const db = firebase.database();
+        let myKey = "", userData = {};
 
         function conectarCuentaNube() {
-            const email = document.getElementById('user-email').value.trim();
-            if (!email) return;
-            myCleanKey = email.toLowerCase().replace(/\./g, '_');
-            
-            // Fijar fecha de corte al iniciar sesión si no existe
-            if(!fechaCorteFija) fechaCorteFija = new Date();
+            myKey = document.getElementById('user-email').value.trim().replace(/\./g, '_');
+            db.ref('users/' + myKey).on('value', (s) => {
+                userData = s.val();
+                if(!userData) return;
+                
+                // Fijar fecha inicio si no existe
+                if(!userData.fecha_inicio) db.ref('users/' + myKey).update({fecha_inicio: new Date().getTime()});
+                
+                const inicio = new Date(userData.fecha_inicio || new Date().getTime());
+                const corte = new Date(inicio); corte.setDate(corte.getDate() + 14);
+                const limite = new Date(corte); limite.setDate(limite.getDate() + 14);
 
-            database.ref('users/' + myCleanKey).on('value', (snap) => {
-                const data = snap.val() || { debito: 3000, credito: 2000, intereses_acumulados: 0 };
-                saldoDebito = data.debito; creditoDisponible = data.credito; intereses = data.intereses_acumulados;
-                
-                document.getElementById('val-debito').innerText = '$' + saldoDebito.toFixed(2);
-                document.getElementById('val-credito').innerText = '$' + creditoDisponible.toFixed(2);
-                document.getElementById('val-interes').innerText = '$' + intereses.toFixed(2);
-                document.getElementById('val-deuda').innerText = '$' + ((2000 - creditoDisponible) + intereses).toFixed(2);
-                
-                document.getElementById('table-corte').innerText = fechaCorteFija.toLocaleDateString();
-                let limite = new Date(fechaCorteFija);
-                limite.setDate(limite.getDate() + 14);
+                document.getElementById('table-corte').innerText = corte.toLocaleDateString();
                 document.getElementById('table-pago').innerText = limite.toLocaleDateString();
-
+                
+                const totalExigible = (2000 - (userData.credito || 2000)) + (userData.intereses_acumulados || 0);
+                document.getElementById('val-debito').innerText = '$' + (userData.debito || 0).toFixed(2);
+                document.getElementById('val-credito').innerText = '$' + (userData.credito || 0).toFixed(2);
+                document.getElementById('val-deuda').innerText = '$' + totalExigible.toFixed(2);
+                
                 document.getElementById('finance-panel').style.display = "block";
                 document.getElementById('main-pay-btn').style.display = "block";
             });
         }
 
-        function ejecutarPagoProgresivo() {
-            let deuda = (2000 - creditoDisponible) + intereses;
-            if (deuda <= 0) return;
-            let montoAPagar = Math.min(saldoDebito, deuda);
+        function ejecutarPagoParcial() {
+            let total = (2000 - (userData.credito || 2000)) + (userData.intereses_acumulados || 0);
+            let pago = Math.min(userData.debito, total);
             
-            database.ref('users/' + myCleanKey).update({
-                debito: parseFloat((saldoDebito - montoAPagar).toFixed(2)),
-                credito: parseFloat((creditoDisponible + montoAPagar - intereses).toFixed(2)),
-                intereses_acumulados: 0
+            db.ref('users/' + myKey).update({
+                debito: userData.debito - pago,
+                credito: userData.credito + pago,
+                intereses_acumulados: (total - pago > 0) ? userData.intereses_acumulados : 0
             });
-            mostrarMensaje("Pago realizado: $" + montoAPagar.toFixed(2), "success");
+            mostrarMensaje("Pago procesado: $" + pago.toFixed(2), "success");
         }
 
-        function toggleAutoPay() {
-            const active = document.getElementById('toggle-auto-pay').checked;
-            document.getElementById('txt-auto-pay').innerText = active ? "Activo" : "Desactivado";
+        function togglePagoAutomatico() {
+            const activo = document.getElementById('toggle-auto-pay').checked;
+            document.getElementById('txt-auto-pay').innerText = activo ? "Activo: Aplicando 25% a deuda vencida" : "Desactivado";
             
-            if (active) {
-                autoPayInterval = setInterval(() => {
-                    let ahora = new Date();
-                    let limite = new Date(fechaCorteFija);
-                    limite.setDate(limite.getDate() + 14);
-
-                    if (ahora > limite) {
-                        // Aplicar interés del 25% si se pasó la fecha
-                        if(intereses == 0) {
-                            let nuevaDeuda = (2000 - creditoDisponible) * 0.25;
-                            database.ref('users/' + myCleanKey).update({ intereses_acumulados: nuevaDeuda });
+            if(activo) {
+                setInterval(() => {
+                    const ahora = new Date().getTime();
+                    const inicio = new Date(userData.fecha_inicio).getTime();
+                    if(ahora > (inicio + 28 * 86400000)) { // 28 días (14 corte + 14 pago)
+                        let deuda = (2000 - userData.credito) + userData.intereses_acumulados;
+                        if(deuda > 0) {
+                            db.ref('users/' + myKey).update({intereses_acumulados: userData.intereses_acumulados + (deuda * 0.25)});
+                            ejecutarPagoParcial();
                         }
-                        ejecutarPagoProgresivo();
                     }
-                }, 10000);
-            } else {
-                clearInterval(autoPayInterval);
+                }, 60000);
             }
         }
 
         function mostrarMensaje(txt, tipo) {
             const box = document.getElementById('status-box');
-            box.className = "status-msg " + tipo;
-            box.innerText = txt;
-            box.style.display = "block";
-            setTimeout(() => box.style.display = 'none', 3000);
+            box.className = "status-msg " + tipo; box.innerText = txt; box.style.display = "block";
+            setTimeout(() => box.style.display = 'none', 4000);
         }
     </script>
 </body>
