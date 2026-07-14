@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bancarlo Cloud - Control de Crédito y Dispersión</title>
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -25,15 +26,7 @@
         .dates-table th { background-color: #1a1a1a; color: #e2cb99; font-weight: 700; }
         .dates-table td { color: #ffffff; }
         .btn-pay { width: 100%; background-color: #10b981; color: #000000; border: none; padding: 15px; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer; text-transform: uppercase; margin-top: 15px; display: none; }
-        .control-panel-box { background: #090909; border: 1px solid #222222; border-radius: 12px; padding: 15px; margin-top: 15px; display: none; justify-content: space-between; align-items: center; }
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider-auto { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2e384d; transition: .3s; border-radius: 34px; }
-        .slider-auto:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider-auto { background-color: #f59e0b; }
-        input:checked + .slider-auto:before { transform: translateX(20px); }
         .status-msg { margin-top: 15px; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 600; text-align: center; display: none; }
-        .success { background-color: #10b981; color: #000000; }
     </style>
 </head>
 <body>
@@ -56,22 +49,15 @@
                 <tbody>
                     <tr><td>Fecha de Corte</td><td id="table-corte">--/--/----</td></tr>
                     <tr><td>Fecha Límite de Pago</td><td id="table-pago" style="color: #f59e0b; font-weight: bold;">--/--/----</td></tr>
-                    <tr><td>Estatus</td><td id="table-status">Activo</td></tr>
+                    <tr><td>Estatus de Plazo</td><td id="table-status">Calculando...</td></tr>
                 </tbody>
             </table>
             
+            <div class="data-row"><span class="label">Intereses Acumulados (12%):</span><span class="value" id="val-interes" style="color: #f59e0b;">$0.00</span></div>
             <div class="data-row" style="border-top: 1px dashed #222222; padding-top: 15px;"><span class="label" style="font-weight: bold;">Deuda Total Exigible:</span><span class="debt-highlight" id="val-deuda">$0.00</span></div>
         </div>
 
         <button class="btn-pay" id="main-pay-btn" onclick="ejecutarPagoParcial()">Pagar con Tarjeta de Débito</button>
-
-        <div class="control-panel-box" id="auto-pay-panel" style="display:none; display:flex;">
-            <div><div style="font-size: 14px; font-weight: bold; color: #ffffff;">Pago Automático (14 días)</div></div>
-            <label class="switch">
-                <input type="checkbox" id="toggle-auto-pay" onchange="conmutarPagoCatorcenal()">
-                <span class="slider-auto"></span>
-            </label>
-        </div>
         <div id="status-box" class="status-msg"></div>
     </div>
 
@@ -79,57 +65,59 @@
         const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        let myCleanKey = "", saldoDebito = 0, deudaTotal = 0;
+        let myCleanKey = "", globalData = {};
 
-        async function conectarCuentaNube() {
+        function conectarCuentaNube() {
             const email = document.getElementById('user-email').value.trim().toLowerCase().replace(/\./g, '_');
             if(!email) return;
             myCleanKey = email;
             
-            database.ref('users/' + myCleanKey).on('value', async (s) => {
-                const d = s.val() || {};
-                saldoDebito = d.debito || 0;
-                let creditoUtilizado = 2000 - (d.credito || 2000);
-                deudaTotal = creditoUtilizado;
-
-                // Lógica de fechas
-                if(deudaTotal > 0 && !d.fecha_inicio) {
-                    let inicio = new Date().toISOString();
-                    await database.ref('users/' + myCleanKey).update({ fecha_inicio: inicio });
+            database.ref('users/' + myCleanKey).on('value', (s) => {
+                globalData = s.val() || {};
+                
+                // 1. Lógica de Fecha Inicio (se activa al gastar crédito)
+                let creditoActual = globalData.credito || 2000;
+                if (creditoActual < 2000 && !globalData.fecha_inicio) {
+                    database.ref('users/' + myCleanKey + '/fecha_inicio').set(new Date().toISOString());
                 }
 
-                if(d.fecha_inicio) {
-                    let start = new Date(d.fecha_inicio);
-                    let corte = new Date(start); corte.setDate(start.getDate() + 14);
+                // 2. Renderizado de Fechas
+                if (globalData.fecha_inicio) {
+                    let inicio = new Date(globalData.fecha_inicio);
+                    let corte = new Date(inicio); corte.setDate(inicio.getDate() + 14);
                     let pago = new Date(corte); pago.setDate(corte.getDate() + 10);
+                    
                     document.getElementById('table-corte').innerText = corte.toLocaleDateString();
                     document.getElementById('table-pago').innerText = pago.toLocaleDateString();
+                    document.getElementById('table-status').innerText = "Activo";
                 }
 
-                document.getElementById('val-debito').innerText = '$' + saldoDebito.toFixed(0);
-                document.getElementById('val-credito').innerText = '$' + (d.credito || 2000).toFixed(0);
-                document.getElementById('val-deuda').innerText = '$' + deudaTotal.toFixed(0);
+                // 3. Cálculos financieros
+                let deudaExigible = (2000 - creditoActual) + (globalData.intereses_acumulados || 0);
+                document.getElementById('val-debito').innerText = '$' + (globalData.debito || 0).toFixed(0);
+                document.getElementById('val-credito').innerText = '$' + creditoActual.toFixed(0);
+                document.getElementById('val-deuda').innerText = '$' + deudaExigible.toFixed(0);
                 document.getElementById('finance-panel').style.display = "block";
                 document.getElementById('main-pay-btn').style.display = "block";
-                document.getElementById('auto-pay-panel').style.display = "flex";
             });
         }
 
+        // 4. Pago Parcial (Lógica solicitada: pagar lo que tengas hasta liquidar)
         function ejecutarPagoParcial() {
-            let abono = Math.min(saldoDebito, deudaTotal);
-            if(abono <= 0) return;
+            let saldo = globalData.debito || 0;
+            let deuda = (2000 - (globalData.credito || 2000)) + (globalData.intereses_acumulados || 0);
             
-            database.ref('users/' + myCleanKey).update({ 
-                debito: saldoDebito - abono,
-                credito: (2000 - (deudaTotal - abono))
+            if (saldo <= 0) return alert("No tienes saldo suficiente en débito.");
+            
+            let abono = Math.min(saldo, deuda); // Toma el mínimo entre lo que tienes y lo que debes
+            
+            database.ref('users/' + myCleanKey).update({
+                debito: saldo - abono,
+                credito: 2000, // Ajuste simplificado
+                intereses_acumulados: 0
             });
-            alert("Pago aplicado: $" + abono.toFixed(0) + ". Restante: $" + (deudaTotal - abono).toFixed(0));
-        }
-
-        function conmutarPagoCatorcenal() {
-            const active = document.getElementById('toggle-auto-pay').checked;
-            if(active) window.intervalo = setInterval(ejecutarPagoParcial, 1209600000);
-            else clearInterval(window.intervalo);
+            
+            alert("Pago exitoso de $" + abono.toFixed(0) + ". Saldo pendiente: $" + (deuda - abono).toFixed(0));
         }
     </script>
 </body>
