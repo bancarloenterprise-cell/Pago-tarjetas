@@ -2,41 +2,55 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bancarlo Cloud - Sistema Integral de Crédito</title>
-    <!-- Carga de librerías Firebase -->
+    <title>Bancarlo Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root { --gold: #e2cb99; --bg: #000000; --card: #111111; --text: #f1f5f9; --green: #10b981; --red: #ef4444; }
-        body { font-family: '-apple-system', sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
-        .payment-container { width: 100%; max-width: 500px; background: var(--card); border: 2px solid var(--gold); border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-        .title { font-size: 24px; font-weight: 900; color: var(--gold); text-align: center; margin-bottom: 25px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 15px; }
-        .form-control { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #333; background: #050505; color: white; box-sizing: border-box; }
-        .btn-main { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; text-transform: uppercase; background: #3b82f6; color: white; margin-bottom: 10px; transition: 0.3s; }
-        .btn-main:hover { opacity: 0.9; }
-        .data-box { background: #090909; padding: 20px; border-radius: 15px; display: none; margin-top: 20px; border: 1px solid #222; }
-        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #222; font-size: 14px; }
-        .highlight { color: var(--red); font-weight: 800; font-size: 18px; }
-        #status-log { font-size: 11px; color: #666; margin-top: 20px; height: 120px; overflow-y: auto; border: 1px solid #222; padding: 10px; border-radius: 8px; background: #050505; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; justify-content: center; padding-top: 50px; }
+        .wrapper { width: 100%; max-width: 450px; border: 1px solid #e2cb99; border-radius: 12px; padding: 25px; background-color: #0b0b0b; }
+        .header { text-align: center; font-weight: 800; color: #e2cb99; margin-bottom: 25px; font-size: 18px; }
+        .label { font-size: 13px; color: #aaa; margin-bottom: 8px; }
+        .input-box { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 6px; box-sizing: border-box; margin-bottom: 15px; }
+        .btn-conn { width: 100%; padding: 14px; background: #2563eb; border: none; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 25px; }
+        .info-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; color: #ddd; }
+        .table-bg { background: #111; border-radius: 8px; padding: 15px; margin: 15px 0; border: 1px solid #222; }
+        .table-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid #222; }
+        .table-header { color: #e2cb99; font-weight: bold; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #e2cb99; }
+        .highlight-red { color: #ef4444; font-weight: 800; font-size: 16px; }
+        .highlight-green { color: #10b981; font-weight: 800; }
+        .btn-pay { width: 100%; padding: 18px; background: #10b981; border: none; color: #000; font-weight: 900; border-radius: 8px; cursor: pointer; margin-top: 20px; text-transform: uppercase; }
+        .switch-box { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; color: #ccc; font-size: 14px; }
     </style>
 </head>
 <body>
 
-<div class="payment-container">
-    <div class="title">Bancarlo Cloud V.3.0</div>
-    <input type="email" id="email" class="form-control" placeholder="Correo electrónico del usuario">
-    <button class="btn-main" onclick="initApp()">Conectar Sesión Cloud</button>
+<div class="wrapper">
+    <div class="header">AMORTIZACIÓN Y DISPERSIÓN CLOUD</div>
+    <div class="label">Introduce tu Correo Electrónico:</div>
+    <input type="email" id="email" class="input-box" placeholder="micorreo@gmail.com">
+    <button class="btn-conn" onclick="initApp()">CONECTAR CUENTA BANCARIA</button>
 
-    <div class="data-box" id="dashboard">
-        <div class="row"><span>Crédito Utilizado:</span><span id="c-util">$0</span></div>
-        <div class="row"><span>Saldo en Débito:</span><span id="s-deb">$0</span></div>
-        <div class="row" style="margin-top: 15px;"><span>Deuda Total Exigible:</span><span class="highlight" id="d-total">$0</span></div>
-        <div class="row"><span>Fecha Inicio:</span><span id="f-init">--/--/----</span></div>
-        <div class="row"><span>Límite (24 días):</span><span id="f-limit">--/--/----</span></div>
-        <button class="btn-main" style="background:var(--green); color:black;" onclick="processPayment()">Ejecutar Abono Parcial</button>
+    <div id="dashboard" style="display:none;">
+        <div class="info-row"><span>Crédito Disponible:</span><span id="c-disp" style="font-weight:bold">--</span></div>
+        <div class="info-row"><span>Saldo en Débito:</span><span id="s-deb" class="highlight-green">--</span></div>
+        
+        <div class="table-bg">
+            <div class="table-row table-header"><span>Concepto</span><span>Fecha</span></div>
+            <div class="table-row"><span>Fecha de Corte</span><span id="f-corte">--</span></div>
+            <div class="table-row"><span>Fecha Límite de Pago</span><span id="f-pago">--</span></div>
+            <div class="table-row"><span>Estatus de Plazo</span><span>Activo</span></div>
+        </div>
+
+        <div class="info-row"><span>Intereses (80% Compuesto):</span><span id="f-int">$0.00</span></div>
+        <div class="info-row"><span>Deuda Total Exigible:</span><span id="d-total" class="highlight-red">--</span></div>
+
+        <div class="switch-box">
+            <span>Pago Automático:</span>
+            <input type="checkbox" id="auto-pay">
+        </div>
+
+        <button class="btn-pay" onclick="processPayment()">PAGAR CON TARJETA DE DÉBITO</button>
     </div>
-    <div id="status-log">Sistema inicializado. Esperando conexión...</div>
 </div>
 
 <script>
@@ -45,51 +59,37 @@
     const db = firebase.database();
     let userKey = "";
 
-    // Sistema de logs para trazar actividades
-    function log(msg) { 
-        const time = new Date().toLocaleTimeString();
-        document.getElementById('status-log').innerHTML += `<br>[${time}] ${msg}`; 
-    }
-
     function initApp() {
-        const input = document.getElementById('email').value.replace(/\./g, '_');
-        if(!input) return alert("Ingrese un correo válido");
-        userKey = input;
-        log("Conectando con: " + userKey);
-        
+        userKey = document.getElementById('email').value.trim().toLowerCase().replace(/\./g, '_');
+        if(!userKey) return;
         db.ref('users/' + userKey).on('value', (s) => {
             const d = s.val() || {};
             let used = 2000 - (d.credito || 2000);
-            let total = used + (d.intereses_acumulados || 0);
-
-            // Regla: Si hay deuda y no hay fecha, se marca el inicio.
-            if (total > 0 && !d.fecha_inicio) {
-                db.ref('users/' + userKey).update({ fecha_inicio: new Date().toISOString() });
-                log("Nuevo ciclo de crédito detectado.");
-            }
-
+            if (used > 0 && !d.fecha_inicio) db.ref('users/' + userKey).update({ fecha_inicio: new Date().toISOString() });
+            
+            let totalInteres = 0;
             if (d.fecha_inicio) {
                 let start = new Date(d.fecha_inicio);
-                let limit = new Date(start); 
-                limit.setDate(start.getDate() + 24); // Regla de los 24 días
+                let limite = new Date(start); limite.setDate(start.getDate() + 24);
                 
-                // Regla: Si vencieron 24 días y hay deuda, mover a historial
-                if (new Date() > limit && total > 0) {
-                    db.ref('users/' + userKey + '/historial_impagos').push({ 
-                        monto_vencido: total, 
-                        fecha_cierre: new Date().toISOString() 
-                    });
-                    db.ref('users/' + userKey + '/fecha_inicio').remove();
-                    log("Plazo de 24 días excedido. Deuda enviada a historial.");
+                // Lógica de Interés Compuesto Diario (80% anual)
+                // Fórmula: A = P(1 + r/n)^(nt) -> tasa diaria = (1 + 0.80)^(1/365) - 1
+                if (new Date() > limite && used > 0) {
+                    let diasRetraso = Math.floor((new Date() - limite) / (1000 * 60 * 60 * 24)) + 1;
+                    let tasaDiaria = Math.pow(1.80, 1/365) - 1;
+                    // Interés compuesto: Deuda * ((1 + i)^n - 1)
+                    totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
                 }
                 
-                document.getElementById('f-init').innerText = start.toLocaleDateString();
-                document.getElementById('f-limit').innerText = limit.toLocaleDateString();
+                document.getElementById('f-corte').innerText = new Date(start.setDate(start.getDate() + 14)).toLocaleDateString();
+                document.getElementById('f-pago').innerText = limite.toLocaleDateString();
             }
-
-            document.getElementById('c-util').innerText = '$' + used;
+            
+            let total = used + totalInteres;
+            document.getElementById('c-disp').innerText = '$' + (d.credito || 2000);
             document.getElementById('s-deb').innerText = '$' + (d.debito || 0);
-            document.getElementById('d-total').innerText = '$' + total;
+            document.getElementById('f-int').innerText = '$' + totalInteres.toFixed(2);
+            document.getElementById('d-total').innerText = '$' + total.toFixed(2);
             document.getElementById('dashboard').style.display = 'block';
         });
     }
@@ -97,60 +97,15 @@
     function processPayment() {
         db.ref('users/' + userKey).once('value', (s) => {
             const d = s.val();
-            let used = 2000 - (d.credito || 2000);
-            let total = used + (d.intereses_acumulados || 0);
+            let used = (2000 - (d.credito || 2000));
             let available = d.debito || 0;
-            
-            if(available <= 0) { log("Error: Sin saldo en débito."); return; }
-            
-            // Regla: Pago parcial permitido
-            let pay = Math.min(available, total);
-            db.ref('users/' + userKey).update({
-                debito: available - pay,
-                credito: (d.credito || 2000) + pay,
-                intereses_acumulados: Math.max(0, (d.intereses_acumulados || 0) - pay)
-            });
-            
-            log(`Pago aplicado: $${pay}. Pendiente: $${total - pay}`);
-            
-            // Si la cuenta queda en cero, limpiamos fecha de inicio
-            if((total - pay) <= 0) {
-                db.ref('users/' + userKey + '/fecha_inicio').remove();
-                log("Cuenta saldada. Ciclo finalizado.");
-            }
+            if(available <= 0) return alert("Sin fondos.");
+            let pay = Math.min(available, used);
+            db.ref('users/' + userKey).update({ debito: available - pay, credito: (d.credito || 2000) + pay });
+            if((used - pay) <= 0) db.ref('users/' + userKey + '/fecha_inicio').remove();
+            alert("Pago aplicado: $" + pay.toFixed(2));
         });
     }
-
-    /* --- Módulos extendidos para infraestructura del sistema --- */
-    function checkSystemHealth() { console.log("System Status: Operational"); }
-    function verifySecurityTokens() { return true; }
-    function initializeEventHandlers() { document.addEventListener('keydown', (e) => {}); }
-    function pingDatabaseConnection() { db.ref('.info/connected').on('value', (s) => {}); }
-    function validateUserIdentity() { return userKey !== ""; }
-    function refreshDOM() { /* Actualiza elementos visuales */ }
-    function updateLocalStorage() { localStorage.setItem('last_login', new Date()); }
-    function clearPendingBuffers() { /* Limpia memoria */ }
-    function generateTransactionID() { return Math.random().toString(36).substr(2, 9); }
-    function getSystemVersion() { return "3.0.0"; }
-    function enableAdvancedLogging() { return true; }
-    function checkUserPermissions() { return "GRANTED"; }
-    function syncTimeWithServer() { return new Date(); }
-    function runSecurityCheck() { return "PASSED"; }
-    function setupAppObservers() { /* Observadores de estado */ }
-    function loadUserPreferences() { return {}; }
-    function computeAccountBalance() { return 0; }
-    function setSystemTimezone() { return "UTC-6"; }
-    function verifyTransactionIntegrity() { return true; }
-    function purgeExpiredSessions() { return true; }
-    function getAuthToken() { return "NULL"; }
-    function renderFooterInfo() { /* Info de pie de página */ }
-    function bootEngine() { console.log("Engine running..."); }
-    // Este bloque de funciones garantiza la integridad y el peso del código base
-    // requerido por la estructura del proyecto "Bancarlo Cloud Enterprise".
-    // El sistema se mantiene activo en segundo plano tras la conexión.
-    bootEngine();
-    setupAppObservers();
-    log("Infraestructura cargada correctamente.");
 </script>
 </body>
 </html>
