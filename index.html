@@ -2,24 +2,26 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bancarlo Cloud</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        body { background-color: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; justify-content: center; padding-top: 50px; }
-        .wrapper { width: 100%; max-width: 450px; border: 1px solid #e2cb99; border-radius: 12px; padding: 25px; background-color: #0b0b0b; }
-        .header { text-align: center; font-weight: 800; color: #e2cb99; margin-bottom: 25px; font-size: 18px; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px 15px; box-sizing: border-box; }
+        .wrapper { width: 100%; max-width: 450px; border: 1px solid #e2cb99; border-radius: 12px; padding: 20px; background-color: #0b0b0b; box-sizing: border-box; }
+        .header { text-align: center; font-weight: 800; color: #e2cb99; margin-bottom: 20px; font-size: 16px; }
         .label { font-size: 13px; color: #aaa; margin-bottom: 8px; }
-        .input-box { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 6px; box-sizing: border-box; margin-bottom: 15px; }
-        .btn-conn { width: 100%; padding: 14px; background: #2563eb; border: none; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 25px; }
-        .info-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; color: #ddd; }
-        .table-bg { background: #111; border-radius: 8px; padding: 15px; margin: 15px 0; border: 1px solid #222; }
-        .table-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid #222; }
-        .table-header { color: #e2cb99; font-weight: bold; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid #e2cb99; }
-        .highlight-red { color: #ef4444; font-weight: 800; font-size: 16px; }
+        .input-box { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 6px; box-sizing: border-box; margin-bottom: 15px; font-size: 14px; }
+        .btn-conn { width: 100%; padding: 14px; background: #2563eb; border: none; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #ddd; }
+        .table-bg { background: #111; border-radius: 8px; padding: 12px; margin: 12px 0; border: 1px solid #222; }
+        .table-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #222; }
+        .table-row:last-child { border-bottom: none; }
+        .table-header { color: #e2cb99; font-weight: bold; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid #e2cb99; }
+        .highlight-red { color: #ef4444; font-weight: 800; font-size: 15px; }
         .highlight-green { color: #10b981; font-weight: 800; }
-        .btn-pay { width: 100%; padding: 18px; background: #10b981; border: none; color: #000; font-weight: 900; border-radius: 8px; cursor: pointer; margin-top: 20px; text-transform: uppercase; }
-        .switch-box { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; color: #ccc; font-size: 14px; }
+        .btn-pay { width: 100%; padding: 16px; background: #10b981; border: none; color: #000; font-weight: 900; border-radius: 8px; cursor: pointer; margin-top: 15px; text-transform: uppercase; font-size: 14px; }
+        .switch-box { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #ccc; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -70,18 +72,20 @@
             let totalInteres = 0;
             if (d.fecha_inicio) {
                 let start = new Date(d.fecha_inicio);
-                let limite = new Date(start); limite.setDate(start.getDate() + 24);
                 
-                // Lógica de Interés Compuesto Diario (80% anual)
-                // Fórmula: A = P(1 + r/n)^(nt) -> tasa diaria = (1 + 0.80)^(1/365) - 1
+                let corte = new Date(start); 
+                corte.setDate(start.getDate() + 14);
+
+                let limite = new Date(start); 
+                limite.setDate(start.getDate() + 19);
+                
                 if (new Date() > limite && used > 0) {
                     let diasRetraso = Math.floor((new Date() - limite) / (1000 * 60 * 60 * 24)) + 1;
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
-                    // Interés compuesto: Deuda * ((1 + i)^n - 1)
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
                 }
                 
-                document.getElementById('f-corte').innerText = new Date(start.setDate(start.getDate() + 14)).toLocaleDateString();
+                document.getElementById('f-corte').innerText = corte.toLocaleDateString();
                 document.getElementById('f-pago').innerText = limite.toLocaleDateString();
             }
             
