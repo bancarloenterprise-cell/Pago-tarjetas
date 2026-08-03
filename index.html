@@ -44,6 +44,7 @@
         </div>
 
         <div class="info-row"><span>Intereses (80% Compuesto):</span><span id="f-int">$0.00</span></div>
+        <div class="info-row"><span>Tarifa Tardía:</span><span id="f-tarifa">$0.00</span></div>
         <div class="info-row"><span>Deuda Total Exigible:</span><span id="d-total" class="highlight-red">--</span></div>
 
         <div class="switch-box">
@@ -70,6 +71,8 @@
             if (used > 0 && !d.fecha_inicio) db.ref('users/' + userKey).update({ fecha_inicio: new Date().toISOString() });
             
             let totalInteres = 0;
+            let tarifaTardia = 0;
+
             if (d.fecha_inicio) {
                 let start = new Date(d.fecha_inicio);
                 
@@ -79,20 +82,26 @@
                 let limite = new Date(start); 
                 limite.setDate(start.getDate() + 19);
                 
-                if (new Date() > limite && used > 0) {
-                    let diasRetraso = Math.floor((new Date() - limite) / (1000 * 60 * 60 * 24)) + 1;
+                // Compara estrictamente después de la fecha límite (1 día o más de retraso)
+                let hoy = new Date();
+                let diffTime = hoy - limite;
+                let diasRetraso = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diasRetraso > 0 && used > 0) {
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
+                    tarifaTardia = 30; // Se aplica una única vez pasada la fecha límite
                 }
                 
                 document.getElementById('f-corte').innerText = corte.toLocaleDateString();
                 document.getElementById('f-pago').innerText = limite.toLocaleDateString();
             }
             
-            let total = used + totalInteres;
+            let total = used + totalInteres + tarifaTardia;
             document.getElementById('c-disp').innerText = '$' + (d.credito || 2000);
             document.getElementById('s-deb').innerText = '$' + (d.debito || 0);
             document.getElementById('f-int').innerText = '$' + totalInteres.toFixed(2);
+            document.getElementById('f-tarifa').innerText = '$' + tarifaTardia.toFixed(2);
             document.getElementById('d-total').innerText = '$' + total.toFixed(2);
             document.getElementById('dashboard').style.display = 'block';
         });
