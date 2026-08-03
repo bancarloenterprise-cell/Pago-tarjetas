@@ -48,7 +48,7 @@
             <div class="table-row table-header"><span>Concepto</span><span>Fecha</span></div>
             <div class="table-row"><span>Fecha de Corte</span><span id="f-corte">--</span></div>
             <div class="table-row"><span>Fecha Límite de Pago</span><span id="f-pago">--</span></div>
-            <div class="table-row"><span>Estatus de Plazo</span><span>Activo</span></div>
+            <div class="table-row"><span>Estatus de Plazo</span><span id="f-estatus">Activo</span></div>
         </div>
 
         <div class="info-row"><span>Intereses (80% Compuesto):</span><span id="f-int">$0.00</span></div>
@@ -72,8 +72,11 @@
     <div class="modal-content">
         <div class="modal-title">AVISO DE VENCIMIENTO</div>
         <div class="modal-text"><span>Fecha Límite:</span> <span id="m-fecha" style="color:#ef4444; font-weight:bold;">--</span></div>
+        <div class="modal-text"><span>Capital Usado:</span> <span id="m-capital" style="color:#fff; font-weight:bold;">--</span></div>
+        <div class="modal-text"><span>Intereses:</span> <span id="m-int" style="color:#fff; font-weight:bold;">--</span></div>
+        <div class="modal-text"><span>Tarifa Tardía:</span> <span id="m-tarifa" style="color:#fff; font-weight:bold;">--</span></div>
         <div class="modal-text"><span>Deuda Total:</span> <span id="m-deuda" style="color:#ef4444; font-weight:bold;">--</span></div>
-        <div style="font-size: 12px; color: #888; margin-top: 10px; text-align: left;">Incluye intereses moratorios y tarifa tardía única.</div>
+        <div style="font-size: 11px; color: #888; margin-top: 10px; text-align: left;">Incluye intereses moratorios y tarifa tardía única de $100.</div>
         
         <button class="btn-pay" style="margin-top:20px;" onclick="processPayment(); closeModal();">PAGAR AHORA</button>
         <button class="modal-close" onclick="closeModal()">Cerrar</button>
@@ -86,6 +89,9 @@
     const db = firebase.database();
     let userKey = "";
     let globalTotal = 0;
+    let globalCapital = 0;
+    let globalInteres = 0;
+    let globalTarifa = 0;
     let globalLimiteStr = "";
 
     function initApp() {
@@ -98,8 +104,16 @@
             
             let totalInteres = 0;
             let tarifaTardia = 0;
+            let corteStr = "--";
+            let limiteStr = "--";
+            let estatusStr = "Al corriente";
 
-            if (d.fecha_inicio) {
+            if (used <= 0) {
+                // Si no debe nada, limpiamos fecha_inicio para que al gastar de nuevo corra el plazo desde cero
+                if (d.fecha_inicio) {
+                    db.ref('users/' + userKey + '/fecha_inicio').remove();
+                }
+            } else if (d.fecha_inicio) {
                 let start = new Date(d.fecha_inicio);
                 
                 let corte = new Date(start); 
@@ -115,24 +129,32 @@
                 let diffTime = hoySinHora - limiteSinHora;
                 let diasRetraso = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                if (diasRetraso >= 1 && used > 0) {
+                if (diasRetraso >= 1) {
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
-                    tarifaTardia = 100; // Tarifa tardía actualizada a 100 pesos
+                    tarifaTardia = 100;
+                    estatusStr = "Vencido";
                     
                     document.getElementById('btn-overdue-alert').style.display = 'block';
                 } else {
                     document.getElementById('btn-overdue-alert').style.display = 'none';
                 }
                 
-                document.getElementById('f-corte').innerText = corte.toLocaleDateString();
-                document.getElementById('f-pago').innerText = limite.toLocaleDateString();
-                globalLimiteStr = limite.toLocaleDateString();
+                corteStr = corte.toLocaleDateString();
+                limiteStr = limite.toLocaleDateString();
+                globalLimiteStr = limiteStr;
             }
             
+            globalCapital = used;
+            globalInteres = totalInteres;
+            globalTarifa = tarifaTardia;
             globalTotal = used + totalInteres + tarifaTardia;
+
             document.getElementById('c-disp').innerText = '$' + (d.credito || 2000);
             document.getElementById('s-deb').innerText = '$' + (d.debito || 0);
+            document.getElementById('f-corte').innerText = corteStr;
+            document.getElementById('f-pago').innerText = limiteStr;
+            document.getElementById('f-estatus').innerText = estatusStr;
             document.getElementById('f-int').innerText = '$' + totalInteres.toFixed(2);
             document.getElementById('f-tarifa').innerText = '$' + tarifaTardia.toFixed(2);
             document.getElementById('d-total').innerText = '$' + globalTotal.toFixed(2);
@@ -142,6 +164,9 @@
 
     function openModal() {
         document.getElementById('m-fecha').innerText = globalLimiteStr;
+        document.getElementById('m-capital').innerText = '$' + globalCapital.toFixed(2);
+        document.getElementById('m-int').innerText = '$' + globalInteres.toFixed(2);
+        document.getElementById('m-tarifa').innerText = '$' + globalTarifa.toFixed(2);
         document.getElementById('m-deuda').innerText = '$' + globalTotal.toFixed(2);
         document.getElementById('modal-window').style.display = 'flex';
     }
