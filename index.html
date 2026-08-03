@@ -21,7 +21,15 @@
         .highlight-red { color: #ef4444; font-weight: 800; font-size: 15px; }
         .highlight-green { color: #10b981; font-weight: 800; }
         .btn-pay { width: 100%; padding: 16px; background: #10b981; border: none; color: #000; font-weight: 900; border-radius: 8px; cursor: pointer; margin-top: 15px; text-transform: uppercase; font-size: 14px; }
+        .btn-overdue { width: 100%; padding: 14px; background: #ef4444; border: none; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 14px; display: none; text-transform: uppercase; }
         .switch-box { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #ccc; font-size: 14px; }
+
+        /* Estilos para el Modal / Ventana Emergente */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; display: none; }
+        .modal-content { background: #111; border: 1px solid #e2cb99; border-radius: 12px; padding: 25px; width: 90%; max-width: 380px; box-sizing: border-box; text-align: center; }
+        .modal-title { color: #e2cb99; font-size: 18px; font-weight: 800; margin-bottom: 15px; }
+        .modal-text { font-size: 14px; color: #ccc; margin-bottom: 10px; text-align: left; display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #222; }
+        .modal-close { background: #333; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -47,6 +55,9 @@
         <div class="info-row"><span>Tarifa Tardía:</span><span id="f-tarifa">$0.00</span></div>
         <div class="info-row"><span>Deuda Total Exigible:</span><span id="d-total" class="highlight-red">--</span></div>
 
+        <!-- Botón que aparece debajo del historial (tabla) si ya pasó la fecha límite -->
+        <button id="btn-overdue-alert" class="btn-overdue" onclick="openModal()">¡Plazo Vencido! Ver Detalles de Pago</button>
+
         <div class="switch-box">
             <span>Pago Automático:</span>
             <input type="checkbox" id="auto-pay">
@@ -56,11 +67,26 @@
     </div>
 </div>
 
+<!-- Ventana Modal -->
+<div id="modal-window" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-title">AVISO DE VENCIMIENTO</div>
+        <div class="modal-text"><span>Fecha Límite:</span> <span id="m-fecha" style="color:#ef4444; font-weight:bold;">--</span></div>
+        <div class="modal-text"><span>Deuda Total:</span> <span id="m-deuda" style="color:#ef4444; font-weight:bold;">--</span></div>
+        <div style="font-size: 12px; color: #888; margin-top: 10px; text-align: left;">Incluye intereses moratorios y tarifa tardía única.</div>
+        
+        <button class="btn-pay" style="margin-top:20px;" onclick="processPayment(); closeModal();">PAGAR AHORA</button>
+        <button class="modal-close" onclick="closeModal()">Cerrar</button>
+    </div>
+</div>
+
 <script>
     const firebaseConfig = { apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw", databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com", projectId: "bancarlo-23297" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     let userKey = "";
+    let globalTotal = 0;
+    let globalLimiteStr = "";
 
     function initApp() {
         userKey = document.getElementById('email').value.trim().toLowerCase().replace(/\./g, '_');
@@ -82,29 +108,47 @@
                 let limite = new Date(start); 
                 limite.setDate(start.getDate() + 19);
                 
-                // Compara estrictamente después de la fecha límite (1 día o más de retraso)
                 let hoy = new Date();
-                let diffTime = hoy - limite;
-                let diasRetraso = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                let hoySinHora = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+                let limiteSinHora = new Date(limite.getFullYear(), limite.getMonth(), limite.getDate());
+                
+                let diffTime = hoySinHora - limiteSinHora;
+                let diasRetraso = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                if (diasRetraso > 0 && used > 0) {
+                if (diasRetraso >= 1 && used > 0) {
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
-                    tarifaTardia = 30; // Se aplica una única vez pasada la fecha límite
+                    tarifaTardia = 30;
+                    
+                    // Mostrar botón de alerta de vencimiento debajo del historial
+                    document.getElementById('btn-overdue-alert').style.display = 'block';
+                } else {
+                    document.getElementById('btn-overdue-alert').style.display = 'none';
                 }
                 
                 document.getElementById('f-corte').innerText = corte.toLocaleDateString();
                 document.getElementById('f-pago').innerText = limite.toLocaleDateString();
+                globalLimiteStr = limite.toLocaleDateString();
             }
             
-            let total = used + totalInteres + tarifaTardia;
+            globalTotal = used + totalInteres + tarifaTardia;
             document.getElementById('c-disp').innerText = '$' + (d.credito || 2000);
             document.getElementById('s-deb').innerText = '$' + (d.debito || 0);
             document.getElementById('f-int').innerText = '$' + totalInteres.toFixed(2);
             document.getElementById('f-tarifa').innerText = '$' + tarifaTardia.toFixed(2);
-            document.getElementById('d-total').innerText = '$' + total.toFixed(2);
+            document.getElementById('d-total').innerText = '$' + globalTotal.toFixed(2);
             document.getElementById('dashboard').style.display = 'block';
         });
+    }
+
+    function openModal() {
+        document.getElementById('m-fecha').innerText = globalLimiteStr;
+        document.getElementById('m-deuda').innerText = '$' + globalTotal.toFixed(2);
+        document.getElementById('modal-window').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modal-window').style.display = 'none';
     }
 
     function processPayment() {
