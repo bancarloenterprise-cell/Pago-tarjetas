@@ -118,9 +118,8 @@
                 if (diasRetraso >= 1 && used > 0) {
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
-                    tarifaTardia = 30;
+                    tarifaTardia = 50; // Tarifa tardía actualizada a 50 pesos una sola vez después de la fecha límite
                     
-                    // Mostrar botón de alerta de vencimiento debajo del historial
                     document.getElementById('btn-overdue-alert').style.display = 'block';
                 } else {
                     document.getElementById('btn-overdue-alert').style.display = 'none';
