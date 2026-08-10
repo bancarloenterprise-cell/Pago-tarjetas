@@ -21,6 +21,9 @@
         .highlight-red { color: #ef4444; font-weight: 800; font-size: 15px; }
         .highlight-green { color: #10b981; font-weight: 800; }
         .btn-pay { width: 100%; padding: 16px; background: #10b981; border: none; color: #000; font-weight: 900; border-radius: 8px; cursor: pointer; margin-top: 15px; text-transform: uppercase; font-size: 14px; }
+        .btn-pay-danger { width: 100%; padding: 16px; background: #ef4444; border: none; color: #fff; font-weight: 900; border-radius: 8px; cursor: pointer; margin-top: 15px; text-transform: uppercase; font-size: 14px; display: none; }
+        .btn-history { width: 100%; padding: 14px; background: #444; border: none; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 14px; position: relative; }
+        .badge-pending { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; padding: 2px 7px; font-size: 11px; font-weight: bold; display: none; }
         .btn-overdue { width: 100%; padding: 14px; background: #ef4444; border: none; color: white; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 10px; font-size: 14px; display: none; text-transform: uppercase; }
         .switch-box { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #ccc; font-size: 14px; }
 
@@ -48,14 +51,13 @@
             <div class="table-row table-header"><span>Concepto</span><span>Fecha</span></div>
             <div class="table-row"><span>Fecha de Corte</span><span id="f-corte">--</span></div>
             <div class="table-row"><span>Fecha Límite de Pago</span><span id="f-pago">--</span></div>
-            <div class="table-row"><span>Estatus de Plazo</span><span id="f-estatus">Activo</span></div>
+            <div class="table-row"><span>Estatus de Plazo</span><span id="f-estatus">Al corriente</span></div>
         </div>
 
         <div class="info-row"><span>Intereses (80% Compuesto):</span><span id="f-int">$0.00</span></div>
-        <div class="info-row"><span>Tarifa Tardía:</span><span id="f-tarifa">$0.00</span></div>
-        <div class="info-row"><span>Deuda Total Exigible:</span><span id="d-total" class="highlight-red">--</span></div>
+        <div class="info-row"><span>Tarifa Tardía ($100) + CAT ($20):</span><span id="f-tarifa">$0.00</span></div>
+        <div class="info-row"><span>Deuda Total Exigible:</span><span id="d-total" class="highlight-red">$0.00</span></div>
 
-        <!-- Botón que aparece debajo del historial (tabla) si ya pasó la fecha límite -->
         <button id="btn-overdue-alert" class="btn-overdue" onclick="openModal()">¡Plazo Vencido! Ver Detalles de Pago</button>
 
         <div class="switch-box">
@@ -63,22 +65,31 @@
             <input type="checkbox" id="auto-pay">
         </div>
 
-        <button class="btn-pay" onclick="processPayment()">PAGAR CON TARJETA DE DÉBITO</button>
+        <button id="btn-normal-pay" class="btn-pay" onclick="processPayment()">PAGAR CON TARJETA DE DÉBITO</button>
+        <button id="btn-danger-pay" class="btn-pay-danger" onclick="processPayment()">¡¡Plazo vencida pagar ahora!!</button>
+
+        <button class="btn-history" onclick="openHistory()">
+            HISTORIAL DE PAGOS
+            <span id="history-badge" class="badge-pending">0</span>
+        </button>
     </div>
 </div>
 
 <!-- Ventana Modal -->
 <div id="modal-window" class="modal-overlay">
     <div class="modal-content">
-        <div class="modal-title">AVISO DE VENCIMIENTO</div>
-        <div class="modal-text"><span>Fecha Límite:</span> <span id="m-fecha" style="color:#ef4444; font-weight:bold;">--</span></div>
-        <div class="modal-text"><span>Capital Usado:</span> <span id="m-capital" style="color:#fff; font-weight:bold;">--</span></div>
-        <div class="modal-text"><span>Intereses:</span> <span id="m-int" style="color:#fff; font-weight:bold;">--</span></div>
-        <div class="modal-text"><span>Tarifa Tardía:</span> <span id="m-tarifa" style="color:#fff; font-weight:bold;">--</span></div>
-        <div class="modal-text"><span>Deuda Total:</span> <span id="m-deuda" style="color:#ef4444; font-weight:bold;">--</span></div>
-        <div style="font-size: 11px; color: #888; margin-top: 10px; text-align: left;">Incluye intereses moratorios y tarifa tardía única de $100.</div>
+        <div class="modal-title" id="m-title">AVISO DE VENCIMIENTO</div>
+        <div id="modal-body-content">
+            <div class="modal-text"><span>Fecha Límite:</span> <span id="m-fecha" style="color:#ef4444; font-weight:bold;">--</span></div>
+            <div class="modal-text"><span>Capital Usado:</span> <span id="m-capital" style="color:#fff; font-weight:bold;">--</span></div>
+            <div class="modal-text"><span>Intereses:</span> <span id="m-int" style="color:#fff; font-weight:bold;">--</span></div>
+            <div class="modal-text"><span>Tarifa Tardía + CAT:</span> <span id="m-tarifa" style="color:#fff; font-weight:bold;">--</span></div>
+            <div class="modal-text"><span>Deuda Total:</span> <span id="m-deuda" style="color:#ef4444; font-weight:bold;">--</span></div>
+            <div style="font-size: 11px; color: #888; margin-top: 10px; text-align: left;">Incluye intereses continuos, tarifa de $100 y CAT de $20 únicos al vencer.</div>
+        </div>
+        <div id="history-list" style="display:none; max-height: 200px; overflow-y: auto;"></div>
         
-        <button class="btn-pay" style="margin-top:20px;" onclick="processPayment(); closeModal();">PAGAR AHORA</button>
+        <button id="btn-pay-modal" class="btn-pay" style="margin-top:20px;" onclick="processPayment(); closeModal();">PAGAR AHORA</button>
         <button class="modal-close" onclick="closeModal()">Cerrar</button>
     </div>
 </div>
@@ -108,11 +119,15 @@
             let limiteStr = "--";
             let estatusStr = "Al corriente";
 
+            let btnNormal = document.getElementById('btn-normal-pay');
+            let btnDanger = document.getElementById('btn-danger-pay');
+
             if (used <= 0) {
-                // Si no debe nada, limpiamos fecha_inicio para que al gastar de nuevo corra el plazo desde cero
                 if (d.fecha_inicio) {
                     db.ref('users/' + userKey + '/fecha_inicio').remove();
                 }
+                btnNormal.style.display = 'block';
+                btnDanger.style.display = 'none';
             } else if (d.fecha_inicio) {
                 let start = new Date(d.fecha_inicio);
                 
@@ -129,20 +144,49 @@
                 let diffTime = hoySinHora - limiteSinHora;
                 let diasRetraso = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-                if (diasRetraso >= 1) {
+                if (diasRetraso === 1) {
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
-                    tarifaTardia = 100;
+                    tarifaTardia = 120; 
                     estatusStr = "Vencido";
                     
+                    corteStr = corte.toLocaleDateString();
+                    limiteStr = limite.toLocaleDateString();
+                    globalLimiteStr = limiteStr;
+
+                    btnNormal.style.display = 'none';
+                    btnDanger.style.display = 'block';
                     document.getElementById('btn-overdue-alert').style.display = 'block';
+
+                } else if (diasRetraso >= 2) {
+                    let tasaDiaria = Math.pow(1.80, 1/365) - 1;
+                    totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
+                    tarifaTardia = 120; 
+                    
+                    let deudaPendienteTotal = used + totalInteres + tarifaTardia;
+                    
+                    registrarDeudaEnHistorialYPonerCeros(limite.toLocaleDateString(), deudaPendienteTotal);
+
+                    used = 0;
+                    totalInteres = 0;
+                    tarifaTardia = 0;
+                    estatusStr = "Al corriente";
+                    corteStr = "--";
+                    limiteStr = "--";
+                    
+                    btnNormal.style.display = 'block';
+                    btnDanger.style.display = 'none';
+                    document.getElementById('btn-overdue-alert').style.display = 'none';
+
                 } else {
+                    corteStr = corte.toLocaleDateString();
+                    limiteStr = limite.toLocaleDateString();
+                    globalLimiteStr = limiteStr;
+
+                    btnNormal.style.display = 'block';
+                    btnDanger.style.display = 'none';
                     document.getElementById('btn-overdue-alert').style.display = 'none';
                 }
-                
-                corteStr = corte.toLocaleDateString();
-                limiteStr = limite.toLocaleDateString();
-                globalLimiteStr = limiteStr;
             }
             
             globalCapital = used;
@@ -158,17 +202,158 @@
             document.getElementById('f-int').innerText = '$' + totalInteres.toFixed(2);
             document.getElementById('f-tarifa').innerText = '$' + tarifaTardia.toFixed(2);
             document.getElementById('d-total').innerText = '$' + globalTotal.toFixed(2);
+            
+            actualizarInsigniaHistorial();
+
             document.getElementById('dashboard').style.display = 'block';
         });
     }
 
+    function registrarDeudaEnHistorialYPonerCeros(fechaLimite, montoTotal) {
+        db.ref('users/' + userKey + '/historial').once('value', (snapshot) => {
+            let hist = snapshot.val();
+            let yaRegistrado = false;
+            if (hist) {
+                Object.values(hist).forEach(item => {
+                    if (item.fechaLimite === fechaLimite && item.estatus && item.estatus.includes("Plazo Vencido")) {
+                        yaRegistrado = true;
+                    }
+                });
+            }
+            if (!yaRegistrado) {
+                db.ref('users/' + userKey + '/historial').push({
+                    fecha: new Date().toLocaleDateString(),
+                    fechaLimite: fechaLimite,
+                    monto: montoTotal.toFixed(2),
+                    estatus: "Plazo Vencido"
+                });
+                db.ref('users/' + userKey).update({
+                    credito: 2000
+                });
+                db.ref('users/' + userKey + '/fecha_inicio').remove();
+            }
+        });
+    }
+
+    function actualizarInsigniaHistorial() {
+        db.ref('users/' + userKey + '/historial').once('value', (s) => {
+            const h = s.val();
+            let count = 0;
+            if (h) {
+                Object.values(h).forEach(p => {
+                    if (p.estatus && p.estatus.includes("Plazo Vencido")) {
+                        count++;
+                    }
+                });
+            }
+            let badge = document.getElementById('history-badge');
+            if (count > 0) {
+                badge.innerText = count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    }
+
     function openModal() {
+        document.getElementById('m-title').innerText = "AVISO DE VENCIMIENTO";
+        document.getElementById('modal-body-content').style.display = 'block';
+        document.getElementById('history-list').style.display = 'none';
         document.getElementById('m-fecha').innerText = globalLimiteStr;
         document.getElementById('m-capital').innerText = '$' + globalCapital.toFixed(2);
         document.getElementById('m-int').innerText = '$' + globalInteres.toFixed(2);
         document.getElementById('m-tarifa').innerText = '$' + globalTarifa.toFixed(2);
         document.getElementById('m-deuda').innerText = '$' + globalTotal.toFixed(2);
+        document.getElementById('btn-pay-modal').style.display = 'block';
         document.getElementById('modal-window').style.display = 'flex';
+    }
+
+    function openHistory() {
+        document.getElementById('m-title').innerText = "HISTORIAL DE PAGOS / PLAZOS VENCIDOS";
+        document.getElementById('modal-body-content').style.display = 'none';
+        document.getElementById('btn-pay-modal').style.display = 'none';
+        const list = document.getElementById('history-list');
+        list.innerHTML = "";
+        db.ref('users/' + userKey + '/historial').once('value', (s) => {
+            const h = s.val();
+            if (h) {
+                Object.entries(h).forEach(([key, p]) => {
+                    let esVencido = p.estatus && p.estatus.includes("Plazo Vencido");
+                    let color = esVencido ? "#ef4444" : "#10b981";
+                    let botonPagar = "";
+                    
+                    if (esVencido) {
+                        botonPagar = `<button onclick="pagarDesdeHistorial('${key}', ${p.monto})" style="background:#10b981; color:#000; border:none; padding:4px 8px; font-weight:bold; border-radius:4px; cursor:pointer; margin-top:5px; font-size:11px;">PAGAR ESTE PLAZO VENCIDO</button>`;
+                    }
+
+                    list.innerHTML += `<div style="border-bottom:1px solid #222; padding:8px 0; text-align:left;">
+                        <div style="display:flex; justify-content:space-between; font-size:13px; color:#ccc;">
+                            <span>${p.fecha} (Límite: ${p.fechaLimite || 'N/A'})</span> <span style="color:${color}; font-weight:bold;">$${p.monto}</span>
+                        </div>
+                        <div style="font-size:11px; color:${color}; font-weight:bold;">Estatus: ${p.estatus || 'Completado'}</div>
+                        ${botonPagar}
+                    </div>`;
+                });
+            } else {
+                list.innerHTML = "<p style='color:#888; font-size:13px;'>No hay registros.</p>";
+            }
+            list.style.display = 'block';
+            document.getElementById('modal-window').style.display = 'flex';
+        });
+    }
+
+    function pagarDesdeHistorial(historyKey, montoDeuda) {
+        db.ref('users/' + userKey).once('value', (s) => {
+            const d = s.val();
+            let available = d.debito || 0;
+            
+            if(available < montoDeuda) {
+                return alert("Fondos insuficientes. Debes tener el dinero completo o más en tu cuenta de débito para poder realizar este pago.");
+            }
+            
+            let opcionPago = prompt("Deuda total: $" + montoDeuda.toFixed(2) + "\n¿Deseas pagar una cantidad menor (abono parcial)? Escribe la cantidad o deja vacío/escribe 'total' para pagar el total completo:");
+            
+            let pagoFinal = montoDeuda;
+            let esParcial = false;
+            
+            if (opcionPago && opcionPago.trim().toLowerCase() !== "total" && !isNaN(opcionPago)) {
+                let abono = parseFloat(opcionPago);
+                if (abono > 0 && abono < montoDeuda) {
+                    esParcial = true;
+                    pagoFinal = abono + 2.5; 
+                } else if (abono >= montoDeuda) {
+                    pagoFinal = montoDeuda;
+                } else {
+                    return alert("Cantidad inválida.");
+                }
+            }
+
+            if (available < pagoFinal) {
+                return alert("Fondos insuficientes en débito para cubrir este pago (incluyendo comisiones si aplica).");
+            }
+
+            db.ref('users/' + userKey).update({ 
+                debito: available - pagoFinal
+            });
+
+            if (esParcial) {
+                let nuevoRestante = montoDeuda - (pagoFinal - 2.5);
+                db.ref('users/' + userKey + '/historial/' + historyKey).update({
+                    monto: nuevoRestante.toFixed(2),
+                    estatus: "Plazo Vencido (Abonado - Recargo $2.5 aplicado)"
+                });
+                alert("Abono aplicado correctamente. Se aplicó un cargo de $2.5 por pago parcial. Queda un saldo pendiente.");
+            } else {
+                db.ref('users/' + userKey + '/historial/' + historyKey).update({
+                    estatus: "Pagado"
+                });
+                alert("¡Plazo vencido pagado por completo con éxito!");
+            }
+
+            closeModal();
+            actualizarInsigniaHistorial();
+        });
     }
 
     function closeModal() {
@@ -180,11 +365,60 @@
             const d = s.val();
             let used = (2000 - (d.credito || 2000));
             let available = d.debito || 0;
-            if(available <= 0) return alert("Sin fondos.");
-            let pay = Math.min(available, used);
-            db.ref('users/' + userKey).update({ debito: available - pay, credito: (d.credito || 2000) + pay });
-            if((used - pay) <= 0) db.ref('users/' + userKey + '/fecha_inicio').remove();
-            alert("Pago aplicado: $" + pay.toFixed(2));
+            let deudaTotal = used + globalInteres + globalTarifa;
+            
+            if (deudaTotal <= 0) return alert("No tienes deuda pendiente.");
+            
+            if (available < deudaTotal) {
+                return alert("Fondos insuficientes. Debes tener el dinero completo o más en tu cuenta de débito para poder realizar este pago.");
+            }
+
+            let opcionPago = prompt("Deuda actual: $" + deudaTotal.toFixed(2) + "\n¿Deseas hacer un pago parcial? Ingresa el monto a abonar o presiona Cancelar/Aceptar para pagar el total completo:");
+            
+            let pay = deudaTotal;
+            let esParcial = false;
+
+            if (opcionPago && !isNaN(opcionPago) && opcionPago.trim() !== "") {
+                let abono = parseFloat(opcionPago);
+                if (abono > 0 && abono < deudaTotal) {
+                    esParcial = true;
+                    pay = abono + 2.5; 
+                }
+            }
+
+            if (available < pay) {
+                return alert("Fondos insuficientes en débito para cubrir el pago y la tarifa por pago parcial ($2.5).");
+            }
+
+            if (esParcial) {
+                let abonoNeto = pay - 2.5;
+                db.ref('users/' + userKey).update({ 
+                    debito: available - pay, 
+                    credito: (d.credito || 2000) + abonoNeto 
+                });
+                db.ref('users/' + userKey + '/historial').push({ 
+                    fecha: new Date().toLocaleDateString(), 
+                    monto: abonoNeto.toFixed(2),
+                    estatus: "Pago Parcial (Cargo $2.5)"
+                });
+                alert("Pago parcial aplicado de $" + abonoNeto.toFixed(2) + " con cargo de $2.5.");
+            } else {
+                db.ref('users/' + userKey).update({ 
+                    debito: available - pay, 
+                    credito: (d.credito || 2000) + used 
+                });
+                db.ref('users/' + userKey + '/historial').push({ 
+                    fecha: new Date().toLocaleDateString(), 
+                    monto: pay.toFixed(2),
+                    estatus: "Pagado"
+                });
+                if((used - pay) <= 0) {
+                    db.ref('users/' + userKey + '/fecha_inicio').remove();
+                }
+                alert("Pago total aplicado: $" + pay.toFixed(2));
+            }
+
+            actualizarInsigniaHistorial();
         });
     }
 </script>
