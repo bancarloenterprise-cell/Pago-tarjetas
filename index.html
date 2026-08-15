@@ -111,7 +111,11 @@
         db.ref('users/' + userKey).on('value', (s) => {
             const d = s.val() || {};
             let used = 2000 - (d.credito || 2000);
-            if (used > 0 && !d.fecha_inicio) db.ref('users/' + userKey).update({ fecha_inicio: new Date().toISOString() });
+            
+            // Si el crédito baja de 2000 y no tiene fecha registrada, se guarda exactamente el día actual como inicio
+            if (used > 0 && !d.fecha_inicio) {
+                db.ref('users/' + userKey).update({ fecha_inicio: new Date().toISOString() });
+            }
             
             let totalInteres = 0;
             let tarifaTardia = 0;
@@ -128,15 +132,20 @@
                 }
                 btnNormal.style.display = 'block';
                 btnDanger.style.display = 'none';
-            } else if (d.fecha_inicio) {
-                let start = new Date(d.fecha_inicio);
+            } else {
+                // Si ya existe fecha_inicio (o se acaba de guardar), calculamos las fechas a partir de ella
+                let fechaRef = d.fecha_inicio ? new Date(d.fecha_inicio) : new Date();
                 
-                let corte = new Date(start); 
-                corte.setDate(start.getDate() + 14);
+                let corte = new Date(fechaRef); 
+                corte.setDate(fechaRef.getDate() + 14);
 
-                let limite = new Date(start); 
-                limite.setDate(start.getDate() + 19);
+                let limite = new Date(fechaRef); 
+                limite.setDate(fechaRef.getDate() + 19);
                 
+                corteStr = corte.toLocaleDateString();
+                limiteStr = limite.toLocaleDateString();
+                globalLimiteStr = limiteStr;
+
                 let hoy = new Date();
                 let hoySinHora = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
                 let limiteSinHora = new Date(limite.getFullYear(), limite.getMonth(), limite.getDate());
@@ -149,10 +158,6 @@
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
                     tarifaTardia = 120; 
                     estatusStr = "Vencido";
-                    
-                    corteStr = corte.toLocaleDateString();
-                    limiteStr = limite.toLocaleDateString();
-                    globalLimiteStr = limiteStr;
 
                     btnNormal.style.display = 'none';
                     btnDanger.style.display = 'block';
@@ -179,10 +184,6 @@
                     document.getElementById('btn-overdue-alert').style.display = 'none';
 
                 } else {
-                    corteStr = corte.toLocaleDateString();
-                    limiteStr = limite.toLocaleDateString();
-                    globalLimiteStr = limiteStr;
-
                     btnNormal.style.display = 'block';
                     btnDanger.style.display = 'none';
                     document.getElementById('btn-overdue-alert').style.display = 'none';
@@ -195,7 +196,7 @@
             globalTotal = used + totalInteres + tarifaTardia;
 
             document.getElementById('c-disp').innerText = '$' + (d.credito || 2000);
-            document.getElementById('s-deb').innerText = '$' + (d.debito || 0);
+            document.getElementById('s-deb').innerText = '$' + Number(d.debito || 0).toFixed(2);
             document.getElementById('f-corte').innerText = corteStr;
             document.getElementById('f-pago').innerText = limiteStr;
             document.getElementById('f-estatus').innerText = estatusStr;
