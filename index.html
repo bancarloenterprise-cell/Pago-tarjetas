@@ -59,7 +59,7 @@
         <div class="info-row"><span>Tarifa Tardía ($100) + CAT ($20):</span><span id="f-tarifa">$0.00</span></div>
         <div class="info-row"><span>Deuda Total Exigible:</span><span id="d-total" class="highlight-red">$0.00</span></div>
 
-        <button id="btn-overdue-alert" class="btn-overdue" onclick="openModal()">¡Plazo Vencido! Ver Detalles de Pago</button>
+        <button id="btn-overdue-alert" class="btn-overdue" onclick="openOverdueDetailsModal()">¡Plazo Vencido! Ver Detalles de Pago</button>
 
         <div class="switch-box">
             <span>Pago Automático:</span>
@@ -76,7 +76,7 @@
     </div>
 </div>
 
-<!-- Ventana Modal de Opciones de Pago -->
+<!-- Ventana Modal de Opciones de Pago y Detalles -->
 <div id="modal-window" class="modal-overlay">
     <div class="modal-content">
         <div class="modal-title" id="m-title">OPCIONES DE PAGO</div>
@@ -87,6 +87,18 @@
             <button class="btn-modal-action" style="background: #2563eb; color: #fff;" onclick="ejecutarPagoMinimo()">Pago Mínimo / Parcial</button>
             <button class="btn-modal-action" style="background: #10b981; color: #000;" onclick="ejecutarPagoTotal()">Pago Total (Sin intereses ni días extras)</button>
         </div>
+        
+        <!-- Contenedor exclusivo para los detalles de plazo vencido -->
+        <div id="overdue-details-content" style="display:none; text-align:left;">
+            <div class="modal-text"><span>Deuda Inicial (Capital):</span> <span id="m-deuda-inicial" style="color:#fff;">$0.00</span></div>
+            <div class="modal-text"><span>Tarifa Tardía:</span> <span id="m-tarifa-tardia" style="color:#fff;">$100.00</span></div>
+            <div class="modal-text"><span>CAT:</span> <span id="m-cat" style="color:#fff;">$20.00</span></div>
+            <div class="modal-text"><span>Interés Compuesto (80% Anual):</span> <span id="m-interes-compuesto" style="color:#fff;">$0.00</span></div>
+            <div class="modal-text" style="border-top: 1px solid #e2cb99; margin-top: 5px; padding-top: 8px;">
+                <span style="font-weight:bold; color:#e2cb99;">Total Exigible:</span> <span id="m-total-exigible" class="highlight-red">$0.00</span>
+            </div>
+        </div>
+
         <div id="history-list" style="display:none; max-height: 200px; overflow-y: auto;"></div>
         
         <button class="modal-close" onclick="closeModal()">Cerrar</button>
@@ -161,7 +173,7 @@
                 if (diasRetraso === 1) {
                     let tasaDiaria = Math.pow(1.80, 1/365) - 1;
                     totalInteres = used * (Math.pow(1 + tasaDiaria, diasRetraso) - 1);
-                    tarifaTardia = 120; 
+                    tarifaTardia = 120; // 100 de tarifa + 20 de CAT
                     estatusStr = "Vencido";
 
                     btnNormal.style.display = 'none';
@@ -267,15 +279,33 @@
         if (globalTotal <= 0) return alert("No tienes deuda pendiente.");
         document.getElementById('m-title').innerText = "OPCIONES DE PAGO";
         document.getElementById('modal-body-content').style.display = 'block';
+        document.getElementById('overdue-details-content').style.display = 'none';
         document.getElementById('history-list').style.display = 'none';
         document.getElementById('modal-deuda-tot').innerText = '$' + globalTotal.toFixed(2);
         document.getElementById('modal-saldo-deb').innerText = '$' + globalDebito.toFixed(2);
         document.getElementById('modal-window').style.display = 'flex';
     }
 
+    function openOverdueDetailsModal() {
+        document.getElementById('m-title').innerText = "DETALLES DE PLAZO VENCIDO";
+        document.getElementById('modal-body-content').style.display = 'none';
+        document.getElementById('history-list').style.display = 'none';
+        
+        // Valores fijos solicitados: 100 de tarifa tardía y 20 de CAT
+        document.getElementById('m-deuda-inicial').innerText = '$' + globalCapital.toFixed(2);
+        document.getElementById('m-tarifa-tardia').innerText = '$100.00';
+        document.getElementById('m-cat').innerText = '$20.00';
+        document.getElementById('m-interes-compuesto').innerText = '$' + globalInteres.toFixed(2) + ' (80% Anual)';
+        document.getElementById('m-total-exigible').innerText = '$' + globalTotal.toFixed(2);
+
+        document.getElementById('overdue-details-content').style.display = 'block';
+        document.getElementById('modal-window').style.display = 'flex';
+    }
+
     function openHistory() {
         document.getElementById('m-title').innerText = "HISTORIAL DE PAGOS / PLAZOS VENCIDOS";
         document.getElementById('modal-body-content').style.display = 'none';
+        document.getElementById('overdue-details-content').style.display = 'none';
         const list = document.getElementById('history-list');
         list.innerHTML = "";
         db.ref('users/' + userKey + '/historial').once('value', (s) => {
@@ -319,7 +349,6 @@
             return alert("Fondos insuficientes en débito. Tienes $" + globalDebito.toFixed(2) + " pero tu abono más el 5% de interés requiere: $" + pay.toFixed(2));
         }
 
-        // Cálculo exacto del porcentaje pagado y asignación de días según reglas del usuario
         let porcentajePagado = (abono / globalTotal) * 100;
         let diasExtraPlazo = 0;
 
